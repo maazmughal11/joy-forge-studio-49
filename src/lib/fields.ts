@@ -129,9 +129,9 @@ export const LIFECYCLE = [
 ];
 
 export function currentLifecycleStep(record: Automation) {
-  const ps = record.data.projectStatus as string | undefined;
+  const ps = record.data['projectStatus'] as string | undefined;
   if (ps && LIFECYCLE.includes(ps)) return LIFECYCLE.indexOf(ps);
-  const os = record.data.opportunityStatus as string | undefined;
+  const os = record.data['opportunityStatus'] as string | undefined;
   if (os && LIFECYCLE.includes(os)) return LIFECYCLE.indexOf(os);
   return 0;
 }
