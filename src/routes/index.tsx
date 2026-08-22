@@ -1,24 +1,140 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
+import {
+  Lightbulb,
+  ClipboardCheck,
+  BadgeCheck,
+  FolderKanban,
+  PauseCircle,
+  AlarmClock,
+  Rocket,
+  Plus,
+  FileBarChart,
+} from "lucide-react";
+import { AppShell } from "@/components/AppShell";
+import { StatusBadge } from "@/components/StatusBadge";
+import { useAppData, actions } from "@/lib/store";
+import {
+  attentionItems,
+  awaitingApproval,
+  awaitingAssessment,
+  approachingProduction,
+  missingWeeklyUpdate,
+  nameOf,
+  onHold,
+} from "@/lib/derive";
+import { Button } from "@/components/ui/button";
 
-// No head() here: the home route inherits title/description/og/twitter from
-// __root.tsx, and ships no og:image so serve-time hosting can inject the
-// project's social preview (explicit og:image or latest screenshot).
 export const Route = createFileRoute("/")({
-  component: Index,
+  head: () => ({
+    meta: [
+      { title: "Automation CoE Portfolio Tracker | Home" },
+      { name: "description", content: "Offline CRM-style dashboard for tracking RPA ideas, projects and deployed automations across the Automation Center of Excellence." },
+      { property: "og:title", content: "Automation CoE Portfolio Tracker" },
+      { property: "og:description", content: "Track RPA ideas, pipeline projects and production automations in one offline portfolio tool." },
+    ],
+  }),
+  component: Home,
 });
 
-// IMPORTANT: Replace this placeholder. See ./README.md for routing conventions.
-function Index() {
+function Home() {
+  const data = useAppData();
+  const navigate = useNavigate();
+  const user = data.settings.currentUser;
+  const records = data.automations.filter((a) => a.stage !== "archived");
+
+  const cards = [
+    { label: "Total Active Ideas", value: records.filter((a) => a.stage === "idea").length, icon: Lightbulb, to: "/ideas" },
+    { label: "Awaiting Assessment", value: records.filter(awaitingAssessment).length, icon: ClipboardCheck, to: "/ideas" },
+    { label: "Awaiting Approval", value: records.filter(awaitingApproval).length, icon: BadgeCheck, to: "/ideas" },
+    { label: "Active Projects", value: records.filter((a) => a.stage === "project").length, icon: FolderKanban, to: "/projects" },
+    { label: "Projects On Hold", value: records.filter((a) => a.stage === "project" && onHold(a)).length, icon: PauseCircle, to: "/projects" },
+    { label: "Missing Updates", value: records.filter(missingWeeklyUpdate).length, icon: AlarmClock, to: "/my-work" },
+    { label: "Approaching Production", value: records.filter(approachingProduction).length, icon: Rocket, to: "/projects" },
+  ] as const;
+
+  const attention = attentionItems(records, user).slice(0, 6);
+  const recent = [...records]
+    .sort((a, b) => new Date(b.modifiedDate).getTime() - new Date(a.modifiedDate).getTime())
+    .slice(0, 6);
+
+  const createIdea = () => {
+    const rec = actions.createRecord("idea", user);
+    navigate({ to: "/record/$id", params: { id: rec.id } });
+  };
+
   return (
-    <div
-      className="flex min-h-screen items-center justify-center"
-      style={{ backgroundColor: "#fcfbf8" }}
+    <AppShell
+      title={`Welcome back, ${user.split(" ")[0]}`}
+      subtitle="Your automation portfolio at a glance — everything stored locally on this machine."
+      actions={
+        <>
+          <Button onClick={createIdea}>
+            <Plus className="h-4 w-4" /> Submit Idea
+          </Button>
+          <Button variant="secondary" asChild>
+            <Link to="/projects">Update Project</Link>
+          </Button>
+          <Button variant="secondary" asChild>
+            <Link to="/my-work">Submit Weekly Update</Link>
+          </Button>
+          <Button variant="outline" asChild>
+            <Link to="/reports">
+              <FileBarChart className="h-4 w-4" /> Open Reports
+            </Link>
+          </Button>
+        </>
+      }
     >
-      <img
-        data-lovable-blank-page-placeholder="REMOVE_THIS"
-        src="https://cdn.gpteng.co/blank-app-v1.svg"
-        alt="Your app will live here!"
-      />
-    </div>
+      <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
+        {cards.map((c) => (
+          <Link key={c.label} to={c.to} className="card-surface p-4 transition-shadow hover:shadow-md">
+            <c.icon className="h-4 w-4 text-primary" />
+            <p className="mt-3 text-2xl font-semibold tabular-nums">{c.value}</p>
+            <p className="text-xs text-muted-foreground">{c.label}</p>
+          </Link>
+        ))}
+      </div>
+
+      <div className="mt-6 grid gap-4 lg:grid-cols-3">
+        <section className="card-surface lg:col-span-2">
+          <header className="border-b border-border px-4 py-3">
+            <h2 className="text-sm font-semibold">Items requiring my attention</h2>
+          </header>
+          <ul className="divide-y divide-border">
+            {attention.map(({ record, reasons, mine }) => (
+              <li key={record.id} className="flex flex-wrap items-center gap-3 px-4 py-3">
+                <div className="min-w-0 flex-1">
+                  <Link to="/record/$id" params={{ id: record.id }} className="font-medium text-primary hover:underline">
+                    {nameOf(record)}
+                  </Link>
+                  <p className="mt-1 text-xs text-muted-foreground">{reasons.join(" · ")}</p>
+                </div>
+                {mine ? <StatusBadge value="Mine" className="bg-primary/10 text-primary border-primary/25" /> : null}
+                <StatusBadge value={String(record.data['projectStatus'] ?? record.data['opportunityStatus'] ?? "")} />
+              </li>
+            ))}
+            {attention.length === 0 ? <li className="px-4 py-8 text-center text-sm text-muted-foreground">Nothing needs your attention.</li> : null}
+          </ul>
+        </section>
+
+        <section className="card-surface">
+          <header className="border-b border-border px-4 py-3">
+            <h2 className="text-sm font-semibold">Recently modified</h2>
+          </header>
+          <ul className="divide-y divide-border">
+            {recent.map((r) => (
+              <li key={r.id} className="px-4 py-3">
+                <Link to="/record/$id" params={{ id: r.id }} className="text-sm font-medium text-primary hover:underline">
+                  {nameOf(r)}
+                </Link>
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  {r.modifiedBy} · {new Date(r.modifiedDate).toLocaleDateString()}
+                </p>
+              </li>
+            ))}
+          </ul>
+        </section>
+      </div>
+    </AppShell>
   );
 }
