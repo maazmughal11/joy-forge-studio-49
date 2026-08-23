@@ -17,7 +17,7 @@ export const Route = createFileRoute("/settings")({
       { property: "og:description", content: "Manage local data storage and dropdown option lists." },
     ],
   }),
-  component: SettingsPage;
+  component: SettingsPage,
 });
 
 const LIST_LABELS: Record<string, string> = {
