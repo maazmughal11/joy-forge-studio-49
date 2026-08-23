@@ -11,9 +11,12 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as IdeasRouteImport } from './routes/ideas'
+import { Route as MyWorkRouteImport } from './routes/my-work'
 import { Route as ProductionRouteImport } from './routes/production'
 import { Route as ProjectsRouteImport } from './routes/projects'
 import { Route as ReportsRouteImport } from './routes/reports'
+import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as RecordIdRouteImport } from './routes/record.$id'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -23,6 +26,11 @@ const IndexRoute = IndexRouteImport.update({
 const IdeasRoute = IdeasRouteImport.update({
   id: '/ideas',
   path: '/ideas',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MyWorkRoute = MyWorkRouteImport.update({
+  id: '/my-work',
+  path: '/my-work',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ProductionRoute = ProductionRouteImport.update({
@@ -40,43 +48,90 @@ const ReportsRoute = ReportsRouteImport.update({
   path: '/reports',
   getParentRoute: () => rootRouteImport,
 } as any)
+const SettingsRoute = SettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RecordIdRoute = RecordIdRouteImport.update({
+  id: '/record/$id',
+  path: '/record/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/ideas': typeof IdeasRoute
+  '/my-work': typeof MyWorkRoute
   '/production': typeof ProductionRoute
   '/projects': typeof ProjectsRoute
   '/reports': typeof ReportsRoute
+  '/settings': typeof SettingsRoute
+  '/record/$id': typeof RecordIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/ideas': typeof IdeasRoute
+  '/my-work': typeof MyWorkRoute
   '/production': typeof ProductionRoute
   '/projects': typeof ProjectsRoute
   '/reports': typeof ReportsRoute
+  '/settings': typeof SettingsRoute
+  '/record/$id': typeof RecordIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/ideas': typeof IdeasRoute
+  '/my-work': typeof MyWorkRoute
   '/production': typeof ProductionRoute
   '/projects': typeof ProjectsRoute
   '/reports': typeof ReportsRoute
+  '/settings': typeof SettingsRoute
+  '/record/$id': typeof RecordIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/ideas' | '/production' | '/projects' | '/reports'
+  fullPaths:
+    | '/'
+    | '/ideas'
+    | '/my-work'
+    | '/production'
+    | '/projects'
+    | '/reports'
+    | '/settings'
+    | '/record/$id'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/ideas' | '/production' | '/projects' | '/reports'
-  id: '__root__' | '/' | '/ideas' | '/production' | '/projects' | '/reports'
+  to:
+    | '/'
+    | '/ideas'
+    | '/my-work'
+    | '/production'
+    | '/projects'
+    | '/reports'
+    | '/settings'
+    | '/record/$id'
+  id:
+    | '__root__'
+    | '/'
+    | '/ideas'
+    | '/my-work'
+    | '/production'
+    | '/projects'
+    | '/reports'
+    | '/settings'
+    | '/record/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   IdeasRoute: typeof IdeasRoute
+  MyWorkRoute: typeof MyWorkRoute
   ProductionRoute: typeof ProductionRoute
   ProjectsRoute: typeof ProjectsRoute
   ReportsRoute: typeof ReportsRoute
+  SettingsRoute: typeof SettingsRoute
+  RecordIdRoute: typeof RecordIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -93,6 +148,13 @@ declare module '@tanstack/react-router' {
       path: '/ideas'
       fullPath: '/ideas'
       preLoaderRoute: typeof IdeasRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/my-work': {
+      id: '/my-work'
+      path: '/my-work'
+      fullPath: '/my-work'
+      preLoaderRoute: typeof MyWorkRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/production': {
@@ -116,15 +178,32 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ReportsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/settings': {
+      id: '/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/record/$id': {
+      id: '/record/$id'
+      path: '/record/$id'
+      fullPath: '/record/$id'
+      preLoaderRoute: typeof RecordIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   IdeasRoute: IdeasRoute,
+  MyWorkRoute: MyWorkRoute,
   ProductionRoute: ProductionRoute,
   ProjectsRoute: ProjectsRoute,
   ReportsRoute: ReportsRoute,
+  SettingsRoute: SettingsRoute,
+  RecordIdRoute: RecordIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
