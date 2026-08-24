@@ -15,8 +15,6 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
-import brandLogo from "@/assets/smurfit-westrock-logo.png.asset.json";
-
 
 const NAV = [
   { to: "/", label: "Home", icon: LayoutDashboard },
@@ -52,16 +50,15 @@ export function AppShell({ title, subtitle, actions: pageActions, children }: { 
   return (
     <div className="flex min-h-screen bg-background text-foreground">
       <aside className="sticky top-0 hidden h-screen w-60 shrink-0 flex-col bg-sidebar text-sidebar-foreground md:flex">
-        <div className="px-5 py-5">
-          <div className="rounded-md bg-white px-3 py-2">
-            <img src={brandLogo.url} alt="Smurfit Westrock" className="h-8 w-full object-contain" />
+        <div className="flex items-center gap-2 px-5 py-5">
+          <div className="flex h-8 w-8 items-center justify-center rounded-md bg-sidebar-primary text-sm font-bold text-sidebar-primary-foreground">
+            AC
           </div>
-          <div className="mt-3 leading-tight">
+          <div className="leading-tight">
             <p className="text-sm font-semibold">Automation CoE</p>
             <p className="text-[11px] text-sidebar-foreground/60">Portfolio Tracker</p>
           </div>
         </div>
-
         <nav className="flex-1 space-y-1 px-3">
           {NAV.map((item) => {
             const active = item.to === "/" ? pathname === "/" : pathname.startsWith(item.to);
