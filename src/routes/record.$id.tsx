@@ -286,7 +286,10 @@ function WeeklyUpdates({ record, user }: { record: Automation; user: string }) {
           </div>
           <Button
             onClick={() => {
-              if (!text.trim()) return toast.error("Add a status comment first");
+              if (!text.trim()) {
+                toast.error("Add a status comment first");
+                return;
+              }
               actions.addUpdate(record.id, { text: text.trim(), percentComplete: percent, rag }, user);
               setText("");
               toast.success("Weekly update logged");
@@ -377,7 +380,10 @@ function Documents({ record, user, docTypes }: { record: Automation; user: strin
           </div>
           <Button
             onClick={() => {
-              if (!name.trim() || !link.trim()) return toast.error("Name and link are required");
+              if (!name.trim() || !link.trim()) {
+                toast.error("Name and link are required");
+                return;
+              }
               actions.addDocument(record.id, { name: name.trim(), link: link.trim(), type, status }, user);
               setName("");
               setLink("");
@@ -451,7 +457,7 @@ function Comments({ record, user }: { record: Automation; user: string }) {
         <ul className="divide-y divide-border">
           {timeline.map((t) => (
             <li key={t.id} className="flex gap-3 px-4 py-3">
-              <StatusBadge value={t.kind} className={t.kind === "Comment" ? "bg-primary/10 text-primary border-primary/25" : undefined} />
+              <StatusBadge value={t.kind} className={t.kind === "Comment" ? "bg-primary/10 text-primary border-primary/25" : ""} />
               <div className="min-w-0 flex-1">
                 <p className="text-sm">{t.label}</p>
                 <p className="mt-0.5 text-xs text-muted-foreground">
