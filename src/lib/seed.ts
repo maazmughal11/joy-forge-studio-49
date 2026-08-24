@@ -26,7 +26,7 @@ const iso = (daysAgo: number) => new Date(Date.now() - daysAgo * 86400000).toISO
 const day = (daysAgo: number) => iso(daysAgo).slice(0, 10);
 
 let n = 0;
-const uid = (p = "id") => `${p}-${Date.now().toString(36)}-${(n++).toString(36)}`;
+const uid = (p = "id") => `${p}-${(n++).toString(36)}`;
 
 type SeedSpec = {
   name: string;
