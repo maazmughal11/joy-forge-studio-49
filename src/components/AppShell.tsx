@@ -81,10 +81,9 @@ export function AppShell({ title, subtitle, actions: pageActions, children }: { 
           })}
         </nav>
         <div className="border-t border-sidebar-border px-4 py-4">
-          <div className="mb-3 flex items-center justify-center py-1">
+          <div className="flex items-center justify-center py-1">
             <img src={logoAsset.url} alt="Smurfit Westrock" className="h-7 w-auto object-contain" />
           </div>
-          <p className="text-[11px] text-sidebar-foreground/60">Offline mode · data stored locally</p>
         </div>
       </aside>
 
