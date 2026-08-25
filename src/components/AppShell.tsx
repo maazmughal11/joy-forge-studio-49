@@ -80,8 +80,11 @@ export function AppShell({ title, subtitle, actions: pageActions, children }: { 
             );
           })}
         </nav>
-        <div className="border-t border-sidebar-border px-4 py-4 text-[11px] text-sidebar-foreground/60">
-          Offline mode · data stored locally
+        <div className="border-t border-sidebar-border px-4 py-4">
+          <div className="mb-3 rounded-lg bg-white p-2 shadow-sm">
+            <img src={logoAsset.url} alt="Smurfit Westrock" className="h-auto w-full" />
+          </div>
+          <p className="text-[11px] text-sidebar-foreground/60">Offline mode · data stored locally</p>
         </div>
       </aside>
 
