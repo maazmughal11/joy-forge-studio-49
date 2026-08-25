@@ -10,7 +10,7 @@ import {
   Settings as SettingsIcon,
   Search,
 } from "lucide-react";
-import logoAsset from "@/assets/smurfit-westrock-logo-transparent.png.asset.json";
+import logoAsset from "@/assets/smurfit-westrock-logo-light.png.asset.json";
 import { hydrate, useAppData, actions } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -81,8 +81,8 @@ export function AppShell({ title, subtitle, actions: pageActions, children }: { 
           })}
         </nav>
         <div className="border-t border-sidebar-border px-4 py-4">
-          <div className="mb-3 flex items-center justify-center rounded-md bg-white px-3 py-2 shadow-sm">
-            <img src={logoAsset.url} alt="Smurfit Westrock" className="h-6 w-auto object-contain" />
+          <div className="mb-3 flex items-center justify-center py-1">
+            <img src={logoAsset.url} alt="Smurfit Westrock" className="h-7 w-auto object-contain" />
           </div>
           <p className="text-[11px] text-sidebar-foreground/60">Offline mode · data stored locally</p>
         </div>
