@@ -10,7 +10,7 @@ import {
   Settings as SettingsIcon,
   Search,
 } from "lucide-react";
-import logoAsset from "@/assets/smurfit-westrock-logo-light.png.asset.json";
+import logoAsset from "@/assets/smurfit-westrock-logo-light2.png.asset.json";
 import { hydrate, useAppData, actions } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
