@@ -18,7 +18,10 @@ export default defineConfig({
     alias: { "@": path.resolve(process.cwd(), "src") },
     dedupe: ["react", "react-dom", "@tanstack/react-router", "@tanstack/react-query"],
   },
-  define: { "process.env.NODE_ENV": JSON.stringify("production") },
+  define: {
+    "process.env.NODE_ENV": JSON.stringify("production"),
+    "import.meta.env.VITE_DESKTOP_SPA": JSON.stringify("true"),
+  },
   build: {
     outDir: "dist-electron/renderer",
     emptyOutDir: true,
