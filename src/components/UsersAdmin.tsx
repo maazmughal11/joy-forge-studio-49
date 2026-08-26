@@ -3,7 +3,7 @@ import { KeyRound, Plus, ShieldCheck, UserCog } from "lucide-react";
 import { toast } from "sonner";
 import { useAppData } from "@/data";
 import { authService } from "@/services/auth-service";
-import { ALL_PERMISSIONS, PERMISSION_GROUPS, ROLE_PERMISSIONS, isValidPin, suggestUsername } from "@/lib/auth";
+import { ALL_PERMISSIONS, PERMISSION_GROUPS, ROLE_PERMISSIONS, isBuiltinAdmin, isValidPin, suggestUsername } from "@/lib/auth";
 import type { Role, UserAccount } from "@/domain/models";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -51,7 +51,14 @@ export function UsersAdmin({ actor }: { actor: string }) {
           <tbody>
             {data.accounts.map((a) => (
               <tr key={a.id} className="border-t border-border/70">
-                <td className="px-3 py-2 font-medium">{a.displayName}</td>
+                <td className="px-3 py-2 font-medium">
+                  {a.displayName}
+                  {isBuiltinAdmin(a) ? (
+                    <span className="ml-2 rounded border border-border px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-muted-foreground">
+                      Built-in
+                    </span>
+                  ) : null}
+                </td>
                 <td className="px-3 py-2 font-mono text-xs">{a.username}</td>
                 <td className="px-3 py-2"><StatusBadge value={a.role} /></td>
                 <td className="px-3 py-2 text-xs text-muted-foreground">
@@ -61,16 +68,25 @@ export function UsersAdmin({ actor }: { actor: string }) {
                 <td className="px-3 py-2">
                   <Switch
                     checked={a.active}
-                    onCheckedChange={(v) =>
-                      authService.setActive(a.id, v, actor, a.username)
-                    }
+                    disabled={isBuiltinAdmin(a)}
+                    onCheckedChange={(v) => {
+                      void authService.setActive(a.id, v, actor, a.username).catch((e) =>
+                        toast.error(e instanceof Error ? e.message : "Could not update the user"),
+                      );
+                    }}
                   />
                 </td>
                 <td className="whitespace-nowrap px-3 py-2 text-right">
-                  <Button size="sm" variant="secondary" onClick={() => setEditing(a)}>Edit</Button>
-                  <Button size="sm" variant="ghost" onClick={() => setPinFor(a)}>
-                    <KeyRound className="h-3.5 w-3.5" /> Reset PIN
-                  </Button>
+                  {isBuiltinAdmin(a) ? (
+                    <span className="text-xs text-muted-foreground">Permanent account — full access</span>
+                  ) : (
+                    <>
+                      <Button size="sm" variant="secondary" onClick={() => setEditing(a)}>Edit</Button>
+                      <Button size="sm" variant="ghost" onClick={() => setPinFor(a)}>
+                        <KeyRound className="h-3.5 w-3.5" /> Reset PIN
+                      </Button>
+                    </>
+                  )}
                 </td>
               </tr>
             ))}
@@ -216,7 +232,7 @@ function EditUserDialog({ account, onClose, actor }: { account: UserAccount | nu
             <div className="flex gap-2">
               <Button
                 onClick={() => {
-                  authService.updateAccount(
+                  void authService.updateAccount(
                     account.id,
                     { role, permissions: role === "Administrator" ? [...ALL_PERMISSIONS] : perms },
                     actor,
