@@ -92,6 +92,10 @@ export const FIELDS: FieldDef[] = [
   { key: "dollarsSaved", label: "Dollars Saved ($)", type: "number", section: "Project Execution", stages: ["project"] },
   { key: "productionDate", label: "Production Date", type: "date", section: "Project Execution", stages: ["project"] },
   { key: "costChargedBack", label: "Cost Charged Back to Business ($)", type: "number", section: "Project Execution", stages: ["project"] },
+  { key: "approval", label: "Approval", type: "text", section: "Project Execution", stages: ["project"], optional: true },
+  { key: "moveToProject", label: "Move to Project", type: "text", section: "Project Execution", stages: ["project"], optional: true },
+  { key: "businessCaseStatus", label: "Business Case Status (legacy)", type: "text", section: "Project Execution", stages: ["project"], optional: true },
+
 
   // Portfolio Info
   { key: "opportunityStatus", label: "Opportunity Status", type: "select", optionKey: "opportunityStatuses", section: "Portfolio Info" },
