@@ -3,6 +3,7 @@ import { useMemo, useRef, useState } from "react";
 import { Download, Upload, RotateCcw, X, Plus, Database, Save, HardDriveDownload, FileSpreadsheet } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
+import { UsersAdmin } from "@/components/UsersAdmin";
 import { useAuth } from "@/hooks/useAuth";
 import { useAppData, actions } from "@/lib/store";
 import { Button } from "@/components/ui/button";
@@ -293,7 +294,7 @@ function SettingsPage() {
   const data = useAppData();
   const fileRef = useRef<HTMLInputElement>(null);
   const [path, setPath] = useState(data.settings.dataFolderPath);
-  const { user, can, account } = useAuth();
+  const { user, account } = useAuth();
   const s = data.settings;
 
   const exportFile = () => {
@@ -308,8 +309,15 @@ function SettingsPage() {
   };
 
   return (
-    <AppShell title="Settings" subtitle="Workspace storage, migration, backups, team members and option lists">
-      requires={"settings.manage"}
+    <AppShell
+      title="Settings"
+      subtitle="Users and permissions, workspace storage, migration, backups and option lists"
+      requires="settings.manage"
+    >
+      <div className="mb-4">
+        <UsersAdmin actor={user} />
+      </div>
+
       <div className="grid gap-4 lg:grid-cols-2">
         <section className="card-surface p-4">
           <h2 className="flex items-center gap-2 text-sm font-semibold">
@@ -476,11 +484,12 @@ function SettingsPage() {
 
       <div className="mt-4 grid gap-4 lg:grid-cols-2">
         <section className="card-surface p-4">
-          <h2 className="text-sm font-semibold">Current profile</h2>
-          <p className="mt-1 text-xs text-muted-foreground">No login required — pick who you are so edits are attributed correctly.</p>
+          <h2 className="text-sm font-semibold">Signed-in account</h2>
+          <p className="mt-1 text-xs text-muted-foreground">All edits are attributed automatically to the signed-in user.</p>
           <p className="mt-4 text-lg font-medium">{user}</p>
-          <p className="text-xs text-muted-foreground">
-            {data.automations.length} records stored · {LIST_LABELS['users']}: {s.users.length} · Mode:{" "}
+          <p className="font-mono text-xs text-muted-foreground">{account?.username} · {account?.role}</p>
+          <p className="mt-2 text-xs text-muted-foreground">
+            {data.automations.length} records stored · {data.accounts.length} user account(s) · Mode:{" "}
             {s.storageMode === "shared" ? "Shared Workspace" : "Local Workspace"}
           </p>
         </section>
