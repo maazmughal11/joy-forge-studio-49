@@ -32,6 +32,7 @@ import {
   nameOf,
   num,
   onHold,
+  pipelineTrend,
   stageLabel,
   str,
 } from "@/lib/derive";
@@ -166,6 +167,8 @@ function Reports() {
     }, new Map<string, number>()),
     ([name, value]) => ({ name, value }),
   ).sort((a, b) => b.value - a.value);
+
+  const pipeTrend = pipelineTrend(records, 12);
 
   // 8-week health trend across all projects
   const trend = Array.from({ length: 8 }, (_, idx) => {
