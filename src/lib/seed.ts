@@ -92,6 +92,71 @@ const specs: SeedSpec[] = [
   { name: "Manual Price List Upload", stage: "archived", category: "Discovery", oppStatus: "Cancelled", division: "Commercial", area: "Reporting", tech: "Not Determined", owner: "Lisa Lagasse", sme: "Wai Wan", ba: "Ana D Prado", benefits: 29000, hours: 430, scoring: [1, 2, 3, 1], region: "Europe", age: 480 },
 ];
 
+const SUMMARIES = [
+  "Requirements signed off by the business.",
+  "Design walkthrough completed with the CoE architect.",
+  "Build progressing; happy path complete.",
+  "Exception handling in progress, SIT started.",
+  "UAT scripts drafted with the business SMEs.",
+  "UAT cycle 1 executed; defects being triaged.",
+  "Hypercare monitoring in place, volumes stable.",
+  "Benefits tracking baselined with Finance.",
+];
+const ACCOMPLISHMENTS = [
+  "Process walkthrough recorded and PDD updated.",
+  "Core workflow build completed for the happy path.",
+  "Regression pack executed with no critical defects.",
+  "Service accounts provisioned and environment validated.",
+  "UAT sign-off received from the business owner.",
+];
+const NEXT_STEPS = [
+  "Complete exception handling and start SIT.",
+  "Schedule UAT kickoff with the business.",
+  "Finalise SDD and peer review the code.",
+  "Prepare go-live checklist and hypercare plan.",
+  "Confirm benefits baseline with Finance.",
+];
+const BLOCKERS = [
+  "None",
+  "Awaiting service account provisioning from IT.",
+  "Business SME availability limited during month-end close.",
+  "Source system upgrade freeze delays UAT window.",
+  "Pending security review of the credential store.",
+];
+const DECISIONS = [
+  "None",
+  "Confirm whether exceptions route to the shared mailbox.",
+  "Agree scope of phase 2 volumes before UAT.",
+  "Decide on attended vs unattended run mode.",
+];
+
+function buildUpdates(spec: Spec, i: number) {
+  const weeks = 3 + (i % 4); // 3-6 weekly updates per project
+  const target = spec.stage === "production" ? 100 : 45 + ((i * 7) % 50);
+  const out: Automation["updates"][number][] = [];
+  for (let w = weeks - 1; w >= 0; w--) {
+    const idx = weeks - 1 - w;
+    const pct = Math.min(target, Math.round(((idx + 1) / weeks) * target));
+    const seed = i + idx;
+    const rag: "Red" | "Amber" | "Green" =
+      seed % 9 === 0 ? "Red" : seed % 4 === 0 ? "Amber" : "Green";
+    out.push({
+      id: uid("u"),
+      date: day(w * 7 + (i % 3)),
+      submittedBy: idx % 2 === 0 ? spec.ba : spec.sme,
+      text: SUMMARIES[(i + idx) % SUMMARIES.length]!,
+      percentComplete: pct,
+      rag,
+      accomplishments: ACCOMPLISHMENTS[(i + idx) % ACCOMPLISHMENTS.length]!,
+      nextSteps: NEXT_STEPS[(i + idx + 1) % NEXT_STEPS.length]!,
+      blockers: rag === "Green" ? "None" : BLOCKERS[(i + idx) % BLOCKERS.length]!,
+      decisions: DECISIONS[(i + idx) % DECISIONS.length]!,
+    });
+  }
+  // some projects deliberately have a stale last update
+  return i % 5 === 0 ? out.slice(0, Math.max(1, out.length - 1)) : out;
+}
+
 function buildApprovals(spec: SeedSpec, i: number): Approval[] {
   const out: Approval[] = [];
   const approved = spec.oppStatus === "Business Case Approved";
@@ -177,16 +242,7 @@ function build(spec: SeedSpec, i: number): Automation {
       { id: uid("c"), timestamp: created, user: spec.owner, text: isProject ? "Kickoff completed with the business owner and CoE." : "Idea logged after process discovery session." },
       { id: uid("c"), timestamp: modified, user: spec.ba, text: isProject ? "Weekly checkpoint held with the business; no blockers raised." : "Discovery workshop scheduled with the process SME." },
     ],
-    updates: isProject
-      ? [
-          { id: uid("u"), date: day(28), submittedBy: spec.ba, text: "Requirements signed off by the business.", percentComplete: 20, rag: "Green" },
-          { id: uid("u"), date: day(21), submittedBy: spec.ba, text: "Design walkthrough completed.", percentComplete: 35, rag: "Green" },
-          { id: uid("u"), date: day(14), submittedBy: spec.sme, text: "Environment access delays with IT.", percentComplete: 50, rag: i % 4 === 0 ? "Red" : "Amber", accomplishments: "Core workflow build completed for the happy path.", nextSteps: "Complete exception handling and start SIT.", blockers: "Awaiting service account provisioning from IT.", decisions: "Confirm whether exceptions route to the shared mailbox." },
-          ...(i % 3 === 0
-            ? []
-            : [{ id: uid("u"), date: day(4), submittedBy: spec.ba, text: "Back on track after credentials were issued.", percentComplete: spec.stage === "production" ? 100 : 70, rag: "Green" as const, accomplishments: "Service accounts issued; regression pack executed.", nextSteps: "Prepare UAT scripts with the business.", blockers: "None", decisions: "None" }]),
-        ]
-      : [],
+    updates: isProject ? buildUpdates(spec, i) : [],
     approvals: buildApprovals(spec, i),
     data: {
       automationId: `AUT-${new Date().getFullYear() - (spec.age > 300 ? 1 : 0)}-${String(i + 1).padStart(4, "0")}`,
