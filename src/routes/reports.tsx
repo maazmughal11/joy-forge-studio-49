@@ -61,6 +61,12 @@ export const Route = createFileRoute("/reports")({
 });
 
 const COLORS = ["var(--chart-1)", "var(--chart-2)", "var(--chart-3)", "var(--chart-4)", "var(--chart-5)"];
+const RAG_COLORS: Record<string, string> = {
+  Green: "var(--rag-green)",
+  Amber: "var(--rag-amber)",
+  Red: "var(--rag-red)",
+};
+const RAG_ORDER = ["Green", "Amber", "Red"];
 const TABS = ["Executive", "Pipeline", "Delivery", "Financial", "Governance"] as const;
 type Tab = (typeof TABS)[number];
 const ALL = "__all__";
@@ -143,7 +149,14 @@ function Reports() {
   const byTechnology = group(records.map((r) => str(r, "technology")));
   const byProjectStatus = group(records.filter((r) => r.stage !== "idea").map((r) => str(r, "projectStatus")));
   const byOppStatus = group(ideas.map((r) => str(r, "opportunityStatus")));
-  const byRag = group(projects.map((a) => lastUpdate(a)?.rag ?? "No update"));
+  const byRag = useMemo(() => {
+    const map = new Map<string, number>();
+    projects.forEach((a) => {
+      const rag = lastUpdate(a)?.rag ?? "No update";
+      map.set(rag, (map.get(rag) ?? 0) + 1);
+    });
+    return RAG_ORDER.map((name) => ({ name, value: map.get(name) ?? 0 })).filter((d) => d.value > 0);
+  }, [projects]);
   const byForecast = ["Next 30 Days", "31-60 Days", "61-90 Days", "Beyond 90 Days", "Production Date Missing"].map((b) => ({
     name: b,
     value: projects.filter((p) => forecastBucket(p) === b).length,
@@ -353,9 +366,11 @@ function Reports() {
               </Panel>
               <Panel title="Project health (RAG)">
                 <PieChart>
-                  <Pie data={byRag} dataKey="value" nameKey="name" innerRadius={60} outerRadius={100} paddingAngle={2}>
-                    {byRag.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-                  </Pie>
+              <Pie data={byRag} dataKey="value" nameKey="name" innerRadius={60} outerRadius={100} paddingAngle={2}>
+                {byRag.map((d) => (
+                  <Cell key={d.name} fill={RAG_COLORS[d.name] ?? COLORS[0]} />
+                ))}
+              </Pie>
                   <Legend />
                   <Tooltip />
                 </PieChart>
@@ -441,9 +456,9 @@ function Reports() {
                   <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
                   <Tooltip />
                   <Legend />
-                  <Line type="monotone" dataKey="Green" stroke="var(--chart-2)" strokeWidth={2} />
-                  <Line type="monotone" dataKey="Amber" stroke="var(--chart-4)" strokeWidth={2} />
-                  <Line type="monotone" dataKey="Red" stroke="var(--chart-5)" strokeWidth={2} />
+                  <Line type="monotone" dataKey="Green" stroke="var(--rag-green)" strokeWidth={2} />
+                  <Line type="monotone" dataKey="Amber" stroke="var(--rag-amber)" strokeWidth={2} />
+                  <Line type="monotone" dataKey="Red" stroke="var(--rag-red)" strokeWidth={2} />
                 </LineChart>
               </Panel>
               <Panel title="Average days in stage">

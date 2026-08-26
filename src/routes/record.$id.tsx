@@ -39,6 +39,18 @@ const SCORE_LABELS: { key: keyof Scoring; label: string }[] = [
   { key: "strategicPriority", label: "Strategic Priority" },
 ];
 
+const RAG_STROKE: Record<string, string> = {
+  Green: "var(--rag-green)",
+  Amber: "var(--rag-amber)",
+  Red: "var(--rag-red)",
+};
+
+function RagDot(props: any) {
+  const rag = props.payload?.rag as string | undefined;
+  const fill = RAG_STROKE[rag ?? ""] ?? "var(--muted-foreground)";
+  return <circle cx={props.cx} cy={props.cy} r={4} fill={fill} stroke="var(--card)" strokeWidth={1.5} />;
+}
+
 function RecordPage() {
   const { id } = Route.useParams();
   const data = useAppData();
@@ -320,7 +332,7 @@ function WeeklyUpdates({ record, user }: { record: Automation; user: string }) {
                 <YAxis yAxisId="h" orientation="right" domain={[0, 3]} ticks={[1, 2, 3]} tick={{ fontSize: 11 }} tickFormatter={(v: number) => (v === 3 ? "Green" : v === 2 ? "Amber" : "Red")} width={56} />
                 <Tooltip formatter={(v: number, n: string) => (n === "health" ? [v === 3 ? "Green" : v === 2 ? "Amber" : "Red", "Health"] : [`${v}%`, "% complete"])} />
                 <Area yAxisId="p" type="monotone" dataKey="percent" name="% complete" stroke="var(--chart-1)" fill="var(--chart-1)" fillOpacity={0.15} />
-                <Line yAxisId="h" type="stepAfter" dataKey="health" name="health" stroke="var(--chart-4)" strokeWidth={2} dot />
+                <Line yAxisId="h" type="stepAfter" dataKey="health" name="health" stroke="var(--muted-foreground)" strokeWidth={2} dot={<RagDot />} />
               </ComposedChart>
             </ResponsiveContainer>
           </div>
@@ -440,7 +452,7 @@ function Documents({ record, user, docTypes }: { record: Automation; user: strin
                 <YAxis yAxisId="h" orientation="right" domain={[0, 3]} ticks={[1, 2, 3]} tick={{ fontSize: 11 }} tickFormatter={(v: number) => (v === 3 ? "Green" : v === 2 ? "Amber" : "Red")} width={56} />
                 <Tooltip formatter={(v: number, n: string) => (n === "health" ? [v === 3 ? "Green" : v === 2 ? "Amber" : "Red", "Health"] : [`${v}%`, "% complete"])} />
                 <Area yAxisId="p" type="monotone" dataKey="percent" name="% complete" stroke="var(--chart-1)" fill="var(--chart-1)" fillOpacity={0.15} />
-                <Line yAxisId="h" type="stepAfter" dataKey="health" name="health" stroke="var(--chart-4)" strokeWidth={2} dot />
+                <Line yAxisId="h" type="stepAfter" dataKey="health" name="health" stroke="var(--muted-foreground)" strokeWidth={2} dot={<RagDot />} />
               </ComposedChart>
             </ResponsiveContainer>
           </div>
@@ -523,7 +535,7 @@ function Comments({ record, user }: { record: Automation; user: string }) {
                 <YAxis yAxisId="h" orientation="right" domain={[0, 3]} ticks={[1, 2, 3]} tick={{ fontSize: 11 }} tickFormatter={(v: number) => (v === 3 ? "Green" : v === 2 ? "Amber" : "Red")} width={56} />
                 <Tooltip formatter={(v: number, n: string) => (n === "health" ? [v === 3 ? "Green" : v === 2 ? "Amber" : "Red", "Health"] : [`${v}%`, "% complete"])} />
                 <Area yAxisId="p" type="monotone" dataKey="percent" name="% complete" stroke="var(--chart-1)" fill="var(--chart-1)" fillOpacity={0.15} />
-                <Line yAxisId="h" type="stepAfter" dataKey="health" name="health" stroke="var(--chart-4)" strokeWidth={2} dot />
+                <Line yAxisId="h" type="stepAfter" dataKey="health" name="health" stroke="var(--muted-foreground)" strokeWidth={2} dot={<RagDot />} />
               </ComposedChart>
             </ResponsiveContainer>
           </div>

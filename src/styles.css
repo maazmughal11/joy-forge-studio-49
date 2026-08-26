@@ -67,6 +67,9 @@
   --color-info-foreground: var(--info-foreground);
   --color-neutral: var(--neutral);
   --color-neutral-foreground: var(--neutral-foreground);
+  --color-rag-green: var(--rag-green);
+  --color-rag-amber: var(--rag-amber);
+  --color-rag-red: var(--rag-red);
   --color-surface-strong: var(--surface-strong);
   --font-sans: "Inter var", ui-sans-serif, system-ui, -apple-system, "Segoe UI", sans-serif;
 }
@@ -113,6 +116,9 @@
   --info-foreground: oklch(0.99 0.005 240);
   --neutral: oklch(0.7 0.01 250);
   --neutral-foreground: oklch(0.25 0.02 250);
+  --rag-green: oklch(0.55 0.18 145);
+  --rag-amber: oklch(0.72 0.16 90);
+  --rag-red: oklch(0.55 0.22 25);
   --surface-strong: oklch(0.985 0.004 250);
   --shadow-card: 0 1px 2px oklch(0.3 0.04 250 / 0.06), 0 8px 24px oklch(0.3 0.04 250 / 0.06);
 }
@@ -150,6 +156,9 @@
   --sidebar-accent-foreground: oklch(0.984 0.003 247.858);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.551 0.027 264.364);
+  --rag-green: oklch(0.62 0.2 145);
+  --rag-amber: oklch(0.78 0.18 90);
+  --rag-red: oklch(0.65 0.24 25);
 }
 
 @layer base {

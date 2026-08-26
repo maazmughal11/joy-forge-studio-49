@@ -188,9 +188,9 @@ function WeeklyUpdates() {
                 <YAxis allowDecimals={false} tick={{ fontSize: 11 }} stroke="var(--muted-foreground)" />
                 <Tooltip contentStyle={{ fontSize: 12 }} />
                 <Legend wrapperStyle={{ fontSize: 11 }} />
-                <Bar dataKey="Green" stackId="r" fill="var(--chart-2)" />
-                <Bar dataKey="Amber" stackId="r" fill="var(--chart-4)" />
-                <Bar dataKey="Red" stackId="r" fill="var(--chart-5)" />
+                <Bar dataKey="Green" stackId="r" fill="var(--rag-green)" />
+                <Bar dataKey="Amber" stackId="r" fill="var(--rag-amber)" />
+                <Bar dataKey="Red" stackId="r" fill="var(--rag-red)" />
               </BarChart>
             </ResponsiveContainer>
           </div>
