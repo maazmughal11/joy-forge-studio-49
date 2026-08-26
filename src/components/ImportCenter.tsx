@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { Fragment, useMemo, useRef, useState } from "react";
 import { Download, Upload, FileSpreadsheet, HelpCircle, AlertTriangle, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 import { useAppData, actions } from "@/data";
@@ -484,8 +484,8 @@ export function ImportCenter({ user }: { user: string }) {
                   </thead>
                   <tbody>
                     {prepared.map((row) => (
-                      <>
-                        <tr key={row.sourceRow} className="border-t border-border/70">
+                      <Fragment key={row.sourceRow}>
+                        <tr className="border-t border-border/70">
                           <td className="px-3 py-2 tabular-nums">{row.sourceRow}</td>
                           <td className="px-3 py-2">
                             <button className="text-left font-medium hover:underline" onClick={() => setExpanded(expanded === row.sourceRow ? null : row.sourceRow)}>
@@ -521,7 +521,7 @@ export function ImportCenter({ user }: { user: string }) {
                           </td>
                         </tr>
                         {expanded === row.sourceRow ? (
-                          <tr key={`${row.sourceRow}-detail`} className="border-t border-border/40 bg-muted/30">
+                          <tr className="border-t border-border/40 bg-muted/30">
                             <td colSpan={5} className="px-3 py-2 text-xs">
                               {row.detectedLegacyCode ? <p>Detected legacy code: <span className="font-medium">{row.detectedLegacyCode}</span> ({legacyCodeMode})</p> : null}
                               {row.errors.map((e) => (
@@ -545,7 +545,7 @@ export function ImportCenter({ user }: { user: string }) {
                             </td>
                           </tr>
                         ) : null}
-                      </>
+                      </Fragment>
                     ))}
                   </tbody>
                 </table>
