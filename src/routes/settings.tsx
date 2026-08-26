@@ -259,10 +259,26 @@ function ImportCenter({ user }: { user: string }) {
 
       {rows ? (
         <div className="mt-4 space-y-3">
+          <div className="flex flex-wrap gap-2">
+            {([["columns", "1. Column mapping"], ["values", "2. Value mapping"]] as const).map(([key, label]) => (
+              <button
+                key={key}
+                onClick={() => setStep(key)}
+                className={cn(
+                  "rounded-full border px-3 py-1.5 text-xs font-medium transition-colors",
+                  step === key ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card text-muted-foreground hover:text-foreground",
+                )}
+              >
+                {label}
+                {key === "values" && valueGaps.length ? ` (${valueGaps.length})` : ""}
+              </button>
+            ))}
+          </div>
           <p className="text-xs text-muted-foreground">
             {body.length} row(s) · {mappedCount} of {headers.length} columns mapped
             {issues.length ? ` · ${issues.length} row(s) will be skipped` : ""}
           </p>
+          {step === "columns" ? (
           <div className="max-h-72 overflow-auto rounded-md border border-border">
             <table className="w-full text-sm">
               <thead className="sticky top-0 bg-muted/80">
@@ -303,6 +319,58 @@ function ImportCenter({ user }: { user: string }) {
               </tbody>
             </table>
           </div>
+          ) : (
+            <div className="space-y-2">
+              <p className="text-xs text-muted-foreground">
+                Translate values used in your source file into the values this app uses (for example “NA” → “North America”).
+                Anything left unmapped is imported exactly as written.
+              </p>
+              {valueGaps.length ? (
+                <div className="max-h-72 overflow-auto rounded-md border border-border">
+                  <table className="w-full text-sm">
+                    <thead className="sticky top-0 bg-muted/80">
+                      <tr className="text-left text-muted-foreground">
+                        <th className="px-3 py-2 font-medium">Field</th>
+                        <th className="px-3 py-2 font-medium">Source value</th>
+                        <th className="px-3 py-2 font-medium">Rows</th>
+                        <th className="px-3 py-2 font-medium">Import as</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {valueGaps.map((g) => {
+                        const mapKey = `${g.fieldKey}::${g.sourceValue}`;
+                        return (
+                          <tr key={mapKey} className="border-t border-border/70">
+                            <td className="px-3 py-2">{g.label}</td>
+                            <td className="px-3 py-2 font-medium">{g.sourceValue}</td>
+                            <td className="px-3 py-2 tabular-nums text-muted-foreground">{g.count}</td>
+                            <td className="px-3 py-2">
+                              <Select
+                                value={valueMap[mapKey] ?? "__keep__"}
+                                onValueChange={(v) => setValueMap((m) => ({ ...m, [mapKey]: v }))}
+                              >
+                                <SelectTrigger className="h-8 w-64"><SelectValue /></SelectTrigger>
+                                <SelectContent className="max-h-72">
+                                  <SelectItem value="__keep__">— Keep “{g.sourceValue}” —</SelectItem>
+                                  {g.options.map((o) => (
+                                    <SelectItem key={o} value={o}>{o}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <p className="rounded-md border border-border bg-muted/40 p-3 text-sm text-muted-foreground">
+                  Every value in your mapped list columns already matches an app value — nothing to translate.
+                </p>
+              )}
+            </div>
+          )}
           {issues.length ? (
             <div className="rounded-md border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive">
               {issues.slice(0, 5).join(" · ")}
@@ -310,8 +378,13 @@ function ImportCenter({ user }: { user: string }) {
             </div>
           ) : null}
           <div className="flex gap-2">
+            {step === "columns" ? (
+              <Button onClick={() => setStep("values")}>Next: value mapping</Button>
+            ) : (
+              <Button variant="secondary" onClick={() => setStep("columns")}>Back to columns</Button>
+            )}
             <Button onClick={runImport}>Import {body.length - issues.length} record(s)</Button>
-            <Button variant="ghost" onClick={() => { setRows(null); setMapping({}); }}>Cancel</Button>
+            <Button variant="ghost" onClick={() => { setRows(null); setMapping({}); setValueMap({}); setStep("columns"); }}>Cancel</Button>
           </div>
         </div>
       ) : null}
