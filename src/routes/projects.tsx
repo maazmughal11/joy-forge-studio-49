@@ -10,6 +10,9 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/projects")({
+  validateSearch: (s: Record<string, unknown>): { view?: string } => ({
+    view: typeof s['view'] === "string" ? s['view'] : undefined,
+  }),
   head: () => ({
     meta: [
       { title: "Project Tracking | Automation CoE Portfolio" },
