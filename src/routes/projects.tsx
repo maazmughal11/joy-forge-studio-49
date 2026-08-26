@@ -38,7 +38,10 @@ function Projects() {
   const data = useAppData();
   const navigate = useNavigate();
   const user = data.settings.currentUser;
-  const [view, setView] = useState<(typeof VIEWS)[number]["key"]>("active");
+  const search = Route.useSearch();
+  const [view, setView] = useState<(typeof VIEWS)[number]["key"]>(
+    (VIEWS.find((v) => v.key === search.view)?.key ?? "active") as (typeof VIEWS)[number]["key"],
+  );
   const [mode, setMode] = useState<"grid" | "kanban">("grid");
 
   let records = data.automations.filter((a) => a.stage === "project" || a.stage === "production");
