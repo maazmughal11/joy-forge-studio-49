@@ -3,7 +3,7 @@ import type { AppData, Automation, FieldValue, HistoryEntry, Stage } from "./typ
 import { seedData, DEFAULT_OPTIONS, DEFAULT_USERS } from "./seed";
 import { FIELDS } from "./fields";
 
-const STORAGE_KEY = "rpa-portfolio-data-v1";
+const STORAGE_KEY = "rpa-portfolio-data-v2";
 
 let state: AppData = seedData();
 let hydrated = false;
