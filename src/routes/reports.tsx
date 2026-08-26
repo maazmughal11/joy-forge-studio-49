@@ -441,9 +441,9 @@ function Reports() {
                   <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
                   <Tooltip />
                   <Legend />
-                  <Line type="monotone" dataKey="Green" stroke="var(--chart-2)" strokeWidth={2} />
-                  <Line type="monotone" dataKey="Amber" stroke="var(--chart-4)" strokeWidth={2} />
-                  <Line type="monotone" dataKey="Red" stroke="var(--chart-5)" strokeWidth={2} />
+                  <Line type="monotone" dataKey="Green" stroke="var(--rag-green)" strokeWidth={2} />
+                  <Line type="monotone" dataKey="Amber" stroke="var(--rag-amber)" strokeWidth={2} />
+                  <Line type="monotone" dataKey="Red" stroke="var(--rag-red)" strokeWidth={2} />
                 </LineChart>
               </Panel>
               <Panel title="Average days in stage">
