@@ -5,11 +5,12 @@ import { AppShell } from "@/components/AppShell";
 import { RecordTable, type Column } from "@/components/RecordTable";
 import { StatusBadge } from "@/components/StatusBadge";
 import { useAppData, actions } from "@/lib/store";
-import { lastUpdate, missingWeeklyUpdate, nameOf, onHold } from "@/lib/derive";
+import { approachingProduction, lastUpdate, missingWeeklyUpdate, nameOf, onHold } from "@/lib/derive";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/projects")({
+  validateSearch: (s: Record<string, unknown>): { view?: string } => (typeof s['view'] === "string" ? { view: s['view'] } : {}),
   head: () => ({
     meta: [
       { title: "Project Tracking | Automation CoE Portfolio" },
@@ -28,6 +29,7 @@ const VIEWS = [
   { key: "mine", label: "My Projects" },
   { key: "hold", label: "On Hold" },
   { key: "missing", label: "Missing Weekly Update" },
+  { key: "approaching", label: "Approaching Production" },
   { key: "recent", label: "Recently Updated" },
 ] as const;
 
@@ -35,7 +37,10 @@ function Projects() {
   const data = useAppData();
   const navigate = useNavigate();
   const user = data.settings.currentUser;
-  const [view, setView] = useState<(typeof VIEWS)[number]["key"]>("active");
+  const search = Route.useSearch();
+  const [view, setView] = useState<(typeof VIEWS)[number]["key"]>(
+    (VIEWS.find((v) => v.key === search.view)?.key ?? "active") as (typeof VIEWS)[number]["key"],
+  );
   const [mode, setMode] = useState<"grid" | "kanban">("grid");
 
   let records = data.automations.filter((a) => a.stage === "project" || a.stage === "production");
@@ -43,6 +48,7 @@ function Projects() {
   if (view === "mine") records = records.filter((a) => [a.data['submittedBy'], a.data['businessAnalyst']].includes(user));
   if (view === "hold") records = records.filter(onHold);
   if (view === "missing") records = records.filter(missingWeeklyUpdate);
+  if (view === "approaching") records = records.filter(approachingProduction);
   if (view === "recent")
     records = records.filter((a) => Date.now() - new Date(a.modifiedDate).getTime() < 30 * 86400000);
 

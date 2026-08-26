@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/ideas")({
+  validateSearch: (s: Record<string, unknown>): { view?: string } => (typeof s['view'] === "string" ? { view: s['view'] } : {}),
   head: () => ({
     meta: [
       { title: "Idea Tracking | Automation CoE Portfolio" },
@@ -34,7 +35,10 @@ function Ideas() {
   const data = useAppData();
   const navigate = useNavigate();
   const user = data.settings.currentUser;
-  const [view, setView] = useState<(typeof VIEWS)[number]["key"]>("all");
+  const search = Route.useSearch();
+  const [view, setView] = useState<(typeof VIEWS)[number]["key"]>(
+    (VIEWS.find((v) => v.key === search.view)?.key ?? "all") as (typeof VIEWS)[number]["key"],
+  );
 
   let records = data.automations.filter((a) => a.stage === "idea");
   if (view === "mine") records = records.filter((a) => [a.data['submittedBy'], a.data['businessAnalyst']].includes(user));
