@@ -21,7 +21,6 @@ import { useAppData } from "@/lib/store";
 import {
   autoId,
   cancelled,
-  completenessPercent,
   daysInCurrentStage,
   daysSinceUpdate,
   documentCoverage,
@@ -36,7 +35,7 @@ import {
   stageLabel,
   str,
 } from "@/lib/derive";
-import { LIFECYCLE, currentLifecycleStep } from "@/lib/fields";
+import { LIFECYCLE, completeness, currentLifecycleStep } from "@/lib/fields";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { downloadCsv, downloadExcel, printReport } from "@/lib/export";
@@ -194,7 +193,7 @@ function Reports() {
     record: r,
     gaps: governanceGaps(r),
     docs: documentCoverage(r),
-    completeness: completenessPercent(r),
+    completeness: completeness(r).percent,
   }));
   const avgCompleteness = governanceRows.length
     ? Math.round(governanceRows.reduce((s, g) => s + g.completeness, 0) / governanceRows.length)
@@ -228,7 +227,7 @@ function Reports() {
         num(r.data['hoursSaved']),
         num(r.data['implementationCost']),
         daysInCurrentStage(r),
-        completenessPercent(r),
+        completeness(r).percent,
         documentCoverage(r).percent,
       ]),
     ] as [string[], ...(string | number)[][]];
