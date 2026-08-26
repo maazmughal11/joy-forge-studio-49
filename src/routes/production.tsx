@@ -31,8 +31,11 @@ function Production() {
   ];
 
   return (
-    <AppShell title="Production Library" subtitle="Deployed automations currently running in production">
-      requires={"production.view"}
+    <AppShell
+      title="Production Library"
+      subtitle="Deployed automations currently running in production"
+      requires="production.view"
+    >
       <RecordTable
         records={records}
         columns={columns}
