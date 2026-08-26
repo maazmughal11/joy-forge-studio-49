@@ -39,6 +39,18 @@ const SCORE_LABELS: { key: keyof Scoring; label: string }[] = [
   { key: "strategicPriority", label: "Strategic Priority" },
 ];
 
+const RAG_STROKE: Record<string, string> = {
+  Green: "var(--rag-green)",
+  Amber: "var(--rag-amber)",
+  Red: "var(--rag-red)",
+};
+
+function RagDot(props: any) {
+  const rag = props.payload?.rag as string | undefined;
+  const fill = RAG_STROKE[rag ?? ""] ?? "var(--muted-foreground)";
+  return <circle cx={props.cx} cy={props.cy} r={4} fill={fill} stroke="var(--card)" strokeWidth={1.5} />;
+}
+
 function RecordPage() {
   const { id } = Route.useParams();
   const data = useAppData();
