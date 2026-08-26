@@ -366,9 +366,11 @@ function Reports() {
               </Panel>
               <Panel title="Project health (RAG)">
                 <PieChart>
-                  <Pie data={byRag} dataKey="value" nameKey="name" innerRadius={60} outerRadius={100} paddingAngle={2}>
-                    {byRag.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-                  </Pie>
+              <Pie data={byRag} dataKey="value" nameKey="name" innerRadius={60} outerRadius={100} paddingAngle={2}>
+                {byRag.map((d) => (
+                  <Cell key={d.name} fill={RAG_COLORS[d.name] ?? COLORS[0]} />
+                ))}
+              </Pie>
                   <Legend />
                   <Tooltip />
                 </PieChart>
