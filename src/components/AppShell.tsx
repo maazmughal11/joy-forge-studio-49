@@ -9,6 +9,10 @@ import {
   UserCheck,
   Settings as SettingsIcon,
   Search,
+  Table2,
+  Stamp,
+  CalendarClock,
+  Database,
 } from "lucide-react";
 import logoAsset from "@/assets/smurfit-westrock-logo-light2.png.asset.json";
 import { hydrate, useAppData, actions } from "@/lib/store";
@@ -19,9 +23,12 @@ import { CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, C
 
 const NAV = [
   { to: "/", label: "Home", icon: LayoutDashboard },
+  { to: "/portfolio", label: "Portfolio", icon: Table2 },
   { to: "/ideas", label: "Idea Tracking", icon: Lightbulb },
   { to: "/projects", label: "Project Tracking", icon: FolderKanban },
   { to: "/production", label: "Production Library", icon: Boxes },
+  { to: "/approvals", label: "Approvals", icon: Stamp },
+  { to: "/weekly-updates", label: "Weekly Updates", icon: CalendarClock },
   { to: "/reports", label: "Reports", icon: BarChart3 },
   { to: "/my-work", label: "My Work", icon: UserCheck },
   { to: "/settings", label: "Settings", icon: SettingsIcon },
@@ -99,6 +106,14 @@ export function AppShell({ title, subtitle, actions: pageActions, children }: { 
               <kbd className="ml-auto rounded border border-border px-1.5 text-[10px]">⌘K</kbd>
             </button>
             <div className="ml-auto flex items-center gap-2">
+              <Link
+                to="/settings"
+                title="Portfolio data connection"
+                className="hidden items-center gap-1.5 rounded-full border border-border bg-card px-2.5 py-1 text-[11px] text-muted-foreground hover:border-ring lg:inline-flex"
+              >
+                <Database className="h-3.5 w-3.5 text-primary" />
+                {data.settings.storageMode === "shared" ? "Connected — Shared Workspace" : "Local Workspace"}
+              </Link>
               <span className="text-xs text-muted-foreground">Signed in as</span>
               <Select value={data.settings.currentUser} onValueChange={(v) => actions.setCurrentUser(v)}>
                 <SelectTrigger className="h-9 w-48 bg-card">
@@ -126,7 +141,7 @@ export function AppShell({ title, subtitle, actions: pageActions, children }: { 
       </div>
 
       <CommandDialog open={searchOpen} onOpenChange={setSearchOpen}>
-        <CommandInput placeholder="Search by name, owner, SME, analyst, division, technology…" />
+        <CommandInput placeholder="Search ID, legacy code, name, owner, SME, analyst, division, technology, PAS #…" />
         <CommandList>
           <CommandEmpty>No matching records.</CommandEmpty>
           <CommandGroup heading="Automations">
@@ -134,12 +149,17 @@ export function AppShell({ title, subtitle, actions: pageActions, children }: { 
               <CommandItem
                 key={a.id}
                 value={[
+                  a.data['automationId'],
+                  a.data['legacyAutomationCode'],
                   a.data['opportunityName'],
                   a.data['businessOwner'],
                   a.data['processSme'],
                   a.data['businessAnalyst'],
                   a.data['division'],
+                  a.data['functionalArea'],
                   a.data['technology'],
+                  a.data['pasNumber'],
+                  a.data['demandNumber'],
                 ]
                   .filter(Boolean)
                   .join(" ")}
@@ -148,10 +168,18 @@ export function AppShell({ title, subtitle, actions: pageActions, children }: { 
                   navigate({ to: "/record/$id", params: { id: a.id } });
                 }}
               >
-                <span className="font-medium">{String(a.data['opportunityName'] ?? "Untitled")}</span>
-                <span className="ml-2 text-xs text-muted-foreground">
-                  {String(a.data['division'] ?? "")} · {a.stage}
-                </span>
+                <div className="min-w-0 flex-1 py-0.5">
+                  <p className="truncate text-xs font-mono text-muted-foreground">
+                    {String(a.data['automationId'] ?? a.id)}
+                    {a.data['legacyAutomationCode'] ? ` · Legacy ${String(a.data['legacyAutomationCode'])}` : ""}
+                  </p>
+                  <p className="truncate font-medium">{String(a.data['opportunityName'] ?? "Untitled")}</p>
+                  <p className="truncate text-xs text-muted-foreground">
+                    {a.category} · {String(a.data['projectStatus'] ?? a.data['opportunityStatus'] ?? "")} —{" "}
+                    {String(a.data['division'] ?? "")} · {String(a.data['technology'] ?? "")} · Owner:{" "}
+                    {String(a.data['businessOwner'] ?? "Unassigned")}
+                  </p>
+                </div>
               </CommandItem>
             ))}
           </CommandGroup>

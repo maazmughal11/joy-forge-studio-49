@@ -1,9 +1,9 @@
 import { useSyncExternalStore } from "react";
-import type { AppData, Automation, FieldValue, HistoryEntry, Stage } from "./types";
+import type { AdminLogEntry, AppData, Approval, Automation, FieldValue, HistoryEntry, Stage } from "./types";
 import { seedData, DEFAULT_OPTIONS, DEFAULT_USERS } from "./seed";
 import { FIELDS } from "./fields";
 
-const STORAGE_KEY = "rpa-portfolio-data-v2";
+const STORAGE_KEY = "rpa-portfolio-data-v3";
 
 let state: AppData = seedData();
 let hydrated = false;
@@ -22,6 +22,30 @@ function persist() {
   }
 }
 
+function normalize(parsed: AppData): AppData {
+  const base = seedData();
+  return {
+    ...base,
+    ...parsed,
+    backups: parsed.backups ?? [],
+    adminLog: parsed.adminLog ?? [],
+    settings: {
+      ...base.settings,
+      ...parsed.settings,
+      options: { ...DEFAULT_OPTIONS, ...(parsed.settings?.options ?? {}) },
+      users: parsed.settings?.users ?? DEFAULT_USERS,
+    },
+    automations: (parsed.automations ?? []).map((a) => ({
+      ...a,
+      approvals: a.approvals ?? [],
+      documents: a.documents ?? [],
+      comments: a.comments ?? [],
+      updates: a.updates ?? [],
+      history: a.history ?? [],
+    })),
+  };
+}
+
 export function hydrate() {
   if (hydrated || typeof window === "undefined") return;
   hydrated = true;
@@ -29,10 +53,7 @@ export function hydrate() {
     const raw = window.localStorage.getItem(STORAGE_KEY);
     if (raw) {
       const parsed = JSON.parse(raw) as AppData;
-      if (parsed?.automations) {
-        parsed.settings.options = { ...DEFAULT_OPTIONS, ...parsed.settings.options, users: parsed.settings.users ?? DEFAULT_USERS };
-        state = parsed;
-      }
+      if (parsed?.automations) state = normalize(parsed);
     } else {
       persist();
     }
@@ -58,7 +79,7 @@ export function useAutomation(id: string): Automation | undefined {
 }
 
 function setState(next: AppData) {
-  state = next;
+  state = { ...next, settings: { ...next.settings, lastWriteAt: new Date().toISOString() } };
   persist();
   emit();
 }
@@ -67,6 +88,10 @@ const uid = (p: string) => `${p}-${Math.random().toString(36).slice(2, 10)}`;
 
 function histEntry(user: string, action: string, extra: Partial<HistoryEntry> = {}): HistoryEntry {
   return { id: uid("h"), timestamp: new Date().toISOString(), user, action, ...extra };
+}
+
+function adminEntry(user: string, action: string, detail?: string): AdminLogEntry {
+  return { id: uid("log"), timestamp: new Date().toISOString(), user, action, ...(detail ? { detail } : {}) };
 }
 
 function touch(record: Automation, user: string, entries: HistoryEntry[]): Automation {
@@ -82,12 +107,35 @@ function update(id: string, fn: (r: Automation) => Automation) {
   setState({ ...state, automations: state.automations.map((a) => (a.id === id ? fn(a) : a)) });
 }
 
+function nextAutomationId(): string {
+  const fy = new Date().getFullYear();
+  const nums = state.automations
+    .map((a) => /AUT-\d{4}-(\d+)/.exec(String(a.data['automationId'] ?? "")))
+    .map((m) => (m ? Number(m[1]) : 0));
+  const next = Math.max(0, ...nums) + 1;
+  return `AUT-${fy}-${String(next).padStart(4, "0")}`;
+}
+
 export const actions = {
   setCurrentUser(name: string) {
     setState({ ...state, settings: { ...state.settings, currentUser: name } });
   },
   setDataFolderPath(path: string) {
     setState({ ...state, settings: { ...state.settings, dataFolderPath: path } });
+  },
+  setSettings(patch: Partial<AppData["settings"]>) {
+    setState({ ...state, settings: { ...state.settings, ...patch } });
+  },
+  setStorageMode(mode: AppData["settings"]["storageMode"], user: string) {
+    setState({
+      ...state,
+      settings: {
+        ...state.settings,
+        storageMode: mode,
+        workspaceLock: mode === "shared" ? { user, acquiredAt: new Date().toISOString() } : null,
+      },
+      adminLog: [adminEntry(user, `Storage mode set to ${mode === "shared" ? "Shared Workspace" : "Local Workspace"}`), ...state.adminLog],
+    });
   },
   setOptionList(key: string, values: string[]) {
     const settings = { ...state.settings, options: { ...state.settings.options, [key]: values } };
@@ -101,6 +149,7 @@ export const actions = {
       stage,
       category: stage === "idea" ? "Discovery" : stage === "production" ? "Deployed" : "Pipeline",
       data: {
+        automationId: nextAutomationId(),
         submittedBy: user,
         submissionDate: now.slice(0, 10),
         opportunityName: "Untitled opportunity",
@@ -117,6 +166,7 @@ export const actions = {
       documents: [],
       comments: [],
       updates: [],
+      approvals: [],
     };
     setState({ ...state, automations: [record, ...state.automations] });
     return record;
@@ -175,7 +225,19 @@ export const actions = {
       ]),
     );
   },
-  addUpdate(id: string, payload: { text: string; percentComplete: number; rag: "Red" | "Amber" | "Green" }, user: string) {
+  addUpdate(
+    id: string,
+    payload: {
+      text: string;
+      percentComplete: number;
+      rag: "Red" | "Amber" | "Green";
+      accomplishments?: string;
+      nextSteps?: string;
+      blockers?: string;
+      decisions?: string;
+    },
+    user: string,
+  ) {
     update(id, (r) =>
       touch(
         {
@@ -185,6 +247,25 @@ export const actions = {
         },
         user,
         [histEntry(user, `Weekly update submitted (${payload.rag}, ${payload.percentComplete}%)`)],
+      ),
+    );
+  },
+  addApproval(id: string, approval: Omit<Approval, "id">, user: string) {
+    update(id, (r) =>
+      touch({ ...r, approvals: [...(r.approvals ?? []), { ...approval, id: uid("ap") }] }, user, [
+        histEntry(user, `Approval requested: ${approval.type}`),
+      ]),
+    );
+  },
+  updateApproval(id: string, approvalId: string, patch: Partial<Approval>, user: string) {
+    update(id, (r) =>
+      touch(
+        {
+          ...r,
+          approvals: (r.approvals ?? []).map((ap) => (ap.id === approvalId ? { ...ap, ...patch } : ap)),
+        },
+        user,
+        [histEntry(user, `Approval updated${patch.status ? `: ${patch.status}` : ""}`)],
       ),
     );
   },
@@ -198,10 +279,89 @@ export const actions = {
     );
   },
   removeDocument(id: string, docId: string, user: string) {
-    update(id, (r) => touch({ ...r, documents: r.documents.filter((d) => d.id !== docId) }, user, [histEntry(user, "Removed a document link")]));
+    update(id, (r) => touch({ ...r, documents: r.documents.filter((d) => d.id !== docId), }, user, [histEntry(user, "Removed a document link")]));
   },
   deleteRecord(id: string) {
     setState({ ...state, automations: state.automations.filter((a) => a.id !== id) });
+  },
+
+  // ---------- Migration / import ----------
+  importRecords(rows: Partial<Automation>[], user: string, source: string) {
+    const now = new Date().toISOString();
+    let seq = 0;
+    const created: Automation[] = rows.map((row) => {
+      const fy = new Date().getFullYear();
+      const existingMax = Math.max(
+        0,
+        ...state.automations.map((a) => Number(/AUT-\d{4}-(\d+)/.exec(String(a.data['automationId'] ?? ""))?.[1] ?? 0)),
+      );
+      seq += 1;
+      const stage = (row.stage ?? "idea") as Stage;
+      return {
+        id: uid("aut"),
+        stage,
+        category: stage === "idea" ? "Discovery" : stage === "production" ? "Deployed" : "Pipeline",
+        data: {
+          automationId: `AUT-${fy}-${String(existingMax + seq).padStart(4, "0")}`,
+          migrationSource: source,
+          ...(row.data ?? {}),
+        },
+        scoring: row.scoring ?? { businessValue: 3, complexity: 3, risk: 3, strategicPriority: 3 },
+        createdBy: user,
+        createdDate: now,
+        modifiedBy: user,
+        modifiedDate: now,
+        history: [histEntry(user, `Imported from ${source}`)],
+        documents: [],
+        comments: [],
+        updates: [],
+        approvals: [],
+      } satisfies Automation;
+    });
+    setState({
+      ...state,
+      automations: [...created, ...state.automations],
+      adminLog: [adminEntry(user, `Imported ${created.length} record(s)`, source), ...state.adminLog],
+    });
+    return created.length;
+  },
+  updateImportedRecord(id: string, data: Record<string, FieldValue>, user: string, source: string) {
+    update(id, (r) => touch({ ...r, data: { ...r.data, ...data, migrationSource: source } }, user, [histEntry(user, `Updated by import (${source})`)]));
+  },
+
+  // ---------- Backup & restore ----------
+  createBackup(user: string, reason = "Manual backup") {
+    const payload = JSON.stringify({ ...state, backups: [] });
+    const backup = {
+      id: uid("bk"),
+      createdAt: new Date().toISOString(),
+      createdBy: user,
+      records: state.automations.length,
+      sizeKb: Math.round((payload.length / 1024) * 10) / 10,
+      reason,
+      payload,
+    };
+    const retention = state.settings.backupRetention || 7;
+    setState({
+      ...state,
+      backups: [backup, ...state.backups].slice(0, retention),
+      adminLog: [adminEntry(user, "Backup created", reason), ...state.adminLog],
+    });
+    return backup;
+  },
+  restoreBackup(backupId: string, user: string) {
+    const backup = state.backups.find((b) => b.id === backupId);
+    if (!backup) throw new Error("Backup not found");
+    const safety = actions.createBackup(user, "Safety backup before restore");
+    const parsed = normalize(JSON.parse(backup.payload) as AppData);
+    setState({
+      ...parsed,
+      backups: [safety, ...state.backups].slice(0, state.settings.backupRetention || 7),
+      adminLog: [adminEntry(user, "Portfolio restored from backup", new Date(backup.createdAt).toLocaleString()), ...state.adminLog],
+    });
+  },
+  deleteBackup(id: string) {
+    setState({ ...state, backups: state.backups.filter((b) => b.id !== id) });
   },
   exportJson() {
     return JSON.stringify(state, null, 2);
@@ -209,7 +369,7 @@ export const actions = {
   importJson(raw: string) {
     const parsed = JSON.parse(raw) as AppData;
     if (!parsed?.automations) throw new Error("Invalid data file");
-    setState(parsed);
+    setState(normalize(parsed));
   },
   resetToSeed() {
     setState(seedData());

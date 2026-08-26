@@ -35,6 +35,34 @@ export type WeeklyUpdate = {
   text: string;
   percentComplete: number;
   rag: "Red" | "Amber" | "Green";
+  accomplishments?: string;
+  nextSteps?: string;
+  blockers?: string;
+  decisions?: string;
+};
+
+export type ApprovalStatus = "Draft" | "Pending" | "Approved" | "Rejected" | "Cancelled" | "Not Required";
+
+export const APPROVAL_TYPES = [
+  "Business Case Approval",
+  "Move to Project Approval",
+  "UAT Approval",
+  "Deployment Approval",
+  "Benefits Validation",
+  "Other",
+] as const;
+
+export type Approval = {
+  id: string;
+  type: string;
+  status: ApprovalStatus;
+  requestedBy: string;
+  requestedDate: string;
+  approver: string;
+  dueDate?: string;
+  decisionDate?: string;
+  decisionComments?: string;
+  evidenceLink?: string;
 };
 
 export type Scoring = {
@@ -60,19 +88,48 @@ export type Automation = {
   documents: DocRecord[];
   comments: CommentRecord[];
   updates: WeeklyUpdate[];
+  approvals: Approval[];
 };
 
 export type OptionLists = Record<string, string[]>;
+
+export type StorageMode = "local" | "shared";
+
+export type BackupMeta = {
+  id: string;
+  createdAt: string;
+  createdBy: string;
+  records: number;
+  sizeKb: number;
+  reason: string;
+  payload: string;
+};
+
+export type AdminLogEntry = {
+  id: string;
+  timestamp: string;
+  user: string;
+  action: string;
+  detail?: string;
+};
 
 export type Settings = {
   currentUser: string;
   users: string[];
   dataFolderPath: string;
   options: OptionLists;
+  storageMode: StorageMode;
+  autoBackup: boolean;
+  backupFrequency: "Daily" | "Weekly";
+  backupRetention: number;
+  lastWriteAt?: string;
+  workspaceLock?: { user: string; acquiredAt: string } | null;
 };
 
 export type AppData = {
   version: number;
   settings: Settings;
   automations: Automation[];
+  backups: BackupMeta[];
+  adminLog: AdminLogEntry[];
 };

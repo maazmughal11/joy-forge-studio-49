@@ -31,6 +31,8 @@ export const Route = createFileRoute("/")({
       { name: "description", content: "Offline CRM-style dashboard for tracking RPA ideas, projects and deployed automations across the Automation Center of Excellence." },
       { property: "og:title", content: "Automation CoE Portfolio Tracker" },
       { property: "og:description", content: "Track RPA ideas, pipeline projects and production automations in one offline portfolio tool." },
+      { property: "og:type", content: "website" },
+      { name: "twitter:card", content: "summary" },
     ],
   }),
   component: Home,
@@ -43,13 +45,13 @@ function Home() {
   const records = data.automations.filter((a) => a.stage !== "archived");
 
   const cards = [
-    { label: "Total Active Ideas", value: records.filter((a) => a.stage === "idea").length, icon: Lightbulb, to: "/ideas" },
-    { label: "Awaiting Assessment", value: records.filter(awaitingAssessment).length, icon: ClipboardCheck, to: "/ideas" },
-    { label: "Awaiting Approval", value: records.filter(awaitingApproval).length, icon: BadgeCheck, to: "/ideas" },
-    { label: "Active Projects", value: records.filter((a) => a.stage === "project").length, icon: FolderKanban, to: "/projects" },
-    { label: "Projects On Hold", value: records.filter((a) => a.stage === "project" && onHold(a)).length, icon: PauseCircle, to: "/projects" },
-    { label: "Missing Updates", value: records.filter(missingWeeklyUpdate).length, icon: AlarmClock, to: "/my-work" },
-    { label: "Approaching Production", value: records.filter(approachingProduction).length, icon: Rocket, to: "/projects" },
+    { label: "Total Active Ideas", value: records.filter((a) => a.stage === "idea").length, icon: Lightbulb, to: "/ideas", search: { view: "all" } },
+    { label: "Awaiting Assessment", value: records.filter(awaitingAssessment).length, icon: ClipboardCheck, to: "/ideas", search: { view: "assessment" } },
+    { label: "Awaiting Approval", value: records.filter(awaitingApproval).length, icon: BadgeCheck, to: "/approvals", search: { view: "pending" } },
+    { label: "Active Projects", value: records.filter((a) => a.stage === "project").length, icon: FolderKanban, to: "/projects", search: { view: "active" } },
+    { label: "Projects On Hold", value: records.filter((a) => a.stage === "project" && onHold(a)).length, icon: PauseCircle, to: "/projects", search: { view: "hold" } },
+    { label: "Missing Updates", value: records.filter(missingWeeklyUpdate).length, icon: AlarmClock, to: "/weekly-updates", search: { view: "missing" } },
+    { label: "Approaching Production", value: records.filter(approachingProduction).length, icon: Rocket, to: "/projects", search: { view: "approaching" } },
   ] as const;
 
   const attention = attentionItems(records, user).slice(0, 6);
@@ -75,7 +77,7 @@ function Home() {
             <Link to="/projects">Update Project</Link>
           </Button>
           <Button variant="secondary" asChild>
-            <Link to="/my-work">Submit Weekly Update</Link>
+            <Link to="/weekly-updates" search={{ view: "missing" }}>Submit Weekly Update</Link>
           </Button>
           <Button variant="outline" asChild>
             <Link to="/reports">
@@ -87,7 +89,12 @@ function Home() {
     >
       <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-7">
         {cards.map((c) => (
-          <Link key={c.label} to={c.to} className="card-surface p-4 transition-shadow hover:shadow-md">
+          <Link
+            key={c.label}
+            to={c.to}
+            search={c.search}
+            className="card-surface p-4 transition-shadow hover:border-primary/40 hover:shadow-md"
+          >
             <c.icon className="h-4 w-4 text-primary" />
             <p className="mt-3 text-2xl font-semibold tabular-nums">{c.value}</p>
             <p className="text-xs text-muted-foreground">{c.label}</p>

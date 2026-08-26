@@ -1,4 +1,4 @@
-import type { AppData, Automation, Stage, Category } from "./types";
+import type { AppData, Approval, Automation, Stage, Category } from "./types";
 
 export const DEFAULT_OPTIONS: Record<string, string[]> = {
   divisions: ["Corporate", "Finance", "Human Resources", "Supply Chain", "Manufacturing", "Commercial", "IT", "Legal"],
@@ -11,7 +11,8 @@ export const DEFAULT_OPTIONS: Record<string, string[]> = {
   projectStatuses: ["Requirements", "Development", "UAT", "Hypercare", "On Hold", "Production"],
   pasStatuses: ["Not Started", "Submitted", "In Review", "Approved", "Rejected"],
   rpaReasons: ["High volume, rule-based", "Repetitive manual data entry", "Multiple system touchpoints", "Error-prone process", "Compliance / audit driven", "Seasonal peak workload"],
-  documentTypes: ["SOP", "Business Case", "PDD", "SDD", "UAT Evidence", "Approval", "Deployment Plan"],
+  documentTypes: ["SOP", "Process Flow", "Business Case", "PDD", "SDD", "UAT Evidence", "Approval", "Deployment Plan"],
+  approvalTypes: ["Business Case Approval", "Move to Project Approval", "UAT Approval", "Deployment Approval", "Benefits Validation", "Other"],
 };
 
 export const DEFAULT_USERS = [
@@ -91,6 +92,51 @@ const specs: SeedSpec[] = [
   { name: "Manual Price List Upload", stage: "archived", category: "Discovery", oppStatus: "Cancelled", division: "Commercial", area: "Reporting", tech: "Not Determined", owner: "Lisa Lagasse", sme: "Wai Wan", ba: "Ana D Prado", benefits: 29000, hours: 430, scoring: [1, 2, 3, 1], region: "Europe", age: 480 },
 ];
 
+function buildApprovals(spec: SeedSpec, i: number): Approval[] {
+  const out: Approval[] = [];
+  const approved = spec.oppStatus === "Business Case Approved";
+  const cancelled = spec.oppStatus === "Cancelled";
+  const push = (type: string, status: Approval["status"], requestedAgo: number, decidedAgo?: number) =>
+    out.push({
+      id: uid("ap"),
+      type,
+      status,
+      requestedBy: spec.ba,
+      requestedDate: day(requestedAgo),
+      approver: spec.owner,
+      dueDate: day(requestedAgo - 7),
+      ...(decidedAgo !== undefined ? { decisionDate: day(decidedAgo) } : {}),
+      decisionComments:
+        status === "Approved"
+          ? "Approved in the monthly Automation CoE portfolio review."
+          : status === "Rejected"
+            ? "Benefit case not strong enough for the current fiscal year."
+            : status === "Pending"
+              ? "Awaiting business sponsor sign-off."
+              : "",
+      evidenceLink: status === "Approved" ? "https://sharepoint.local/sites/coe/approvals" : "",
+    });
+
+  if (cancelled) push("Business Case Approval", "Rejected", Math.round(spec.age / 2), Math.round(spec.age / 3));
+  else if (approved) push("Business Case Approval", "Approved", Math.round(spec.age / 2) + 10, Math.round(spec.age / 2));
+  else if (spec.oppStatus === "Deep Dive") push("Business Case Approval", "Pending", 3 + (i % 4) * 5);
+  else if (spec.oppStatus === "On Hold") push("Business Case Approval", "Draft", 20 + i);
+  else push("Business Case Approval", "Not Required", 5 + i);
+
+  if (spec.stage !== "idea") {
+    push("Move to Project Approval", "Approved", Math.round(spec.age / 2) - 4, Math.round(spec.age / 2) - 8);
+  }
+  if (["UAT", "Hypercare", "Production"].includes(spec.projStatus ?? "")) {
+    push("UAT Approval", spec.projStatus === "UAT" ? "Pending" : "Approved", spec.projStatus === "UAT" ? 2 + (i % 9) : 40, spec.projStatus === "UAT" ? undefined : 35);
+  }
+  if (spec.stage === "production") {
+    push("Deployment Approval", "Approved", 30, 26);
+    push("Benefits Validation", i % 2 === 0 ? "Pending" : "Approved", 4 + (i % 10), i % 2 === 0 ? undefined : 3);
+  }
+  if (spec.projStatus === "On Hold") push("Move to Project Approval", "Cancelled", 60, 55);
+  return out;
+}
+
 function build(spec: SeedSpec, i: number): Automation {
   const created = iso(spec.age);
   const modified = iso(Math.max(1, Math.round(spec.age / (i % 3 === 0 ? 12 : 3))));
@@ -135,13 +181,16 @@ function build(spec: SeedSpec, i: number): Automation {
       ? [
           { id: uid("u"), date: day(28), submittedBy: spec.ba, text: "Requirements signed off by the business.", percentComplete: 20, rag: "Green" },
           { id: uid("u"), date: day(21), submittedBy: spec.ba, text: "Design walkthrough completed.", percentComplete: 35, rag: "Green" },
-          { id: uid("u"), date: day(14), submittedBy: spec.sme, text: "Environment access delays with IT.", percentComplete: 50, rag: i % 4 === 0 ? "Red" : "Amber" },
+          { id: uid("u"), date: day(14), submittedBy: spec.sme, text: "Environment access delays with IT.", percentComplete: 50, rag: i % 4 === 0 ? "Red" : "Amber", accomplishments: "Core workflow build completed for the happy path.", nextSteps: "Complete exception handling and start SIT.", blockers: "Awaiting service account provisioning from IT.", decisions: "Confirm whether exceptions route to the shared mailbox." },
           ...(i % 3 === 0
             ? []
-            : [{ id: uid("u"), date: day(4), submittedBy: spec.ba, text: "Back on track after credentials were issued.", percentComplete: spec.stage === "production" ? 100 : 70, rag: "Green" as const }]),
+            : [{ id: uid("u"), date: day(4), submittedBy: spec.ba, text: "Back on track after credentials were issued.", percentComplete: spec.stage === "production" ? 100 : 70, rag: "Green" as const, accomplishments: "Service accounts issued; regression pack executed.", nextSteps: "Prepare UAT scripts with the business.", blockers: "None", decisions: "None" }]),
         ]
       : [],
+    approvals: buildApprovals(spec, i),
     data: {
+      automationId: `AUT-${new Date().getFullYear() - (spec.age > 300 ? 1 : 0)}-${String(i + 1).padStart(4, "0")}`,
+      legacyAutomationCode: i % 4 === 3 ? "" : `${(61 + i).toString().padStart(3, "0")}${i % 5 === 0 ? "A" : ""}`,
       submittedBy: spec.ba,
       submissionDate: created.slice(0, 10),
       opportunityName: spec.name,
@@ -224,7 +273,14 @@ export function seedData(): AppData {
       users: DEFAULT_USERS,
       dataFolderPath: "C:\\Users\\<you>\\OneDrive - Company\\Automation CoE\\portfolio-data",
       options: { ...DEFAULT_OPTIONS, users: DEFAULT_USERS },
+      storageMode: "local",
+      autoBackup: true,
+      backupFrequency: "Daily",
+      backupRetention: 7,
+      workspaceLock: null,
     },
     automations: specs.map(build),
+    backups: [],
+    adminLog: [],
   };
 }

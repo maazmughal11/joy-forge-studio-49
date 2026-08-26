@@ -11,6 +11,8 @@ export type FieldDef = {
   options?: string[];
   stages?: ("idea" | "project")[];
   auto?: boolean;
+  /** Optional business fields are excluded from the completeness calculation. */
+  optional?: boolean;
 };
 
 export const SECTIONS = [
@@ -97,7 +99,32 @@ export const FIELDS: FieldDef[] = [
   { key: "year", label: "Year (FY)", type: "text", section: "Portfolio Info" },
   { key: "requestType", label: "Request Type", type: "select", optionKey: "requestTypes", section: "Portfolio Info" },
   { key: "technology", label: "Technology", type: "select", optionKey: "technologies", section: "Portfolio Info" },
+  { key: "legacyAutomationCode", label: "Legacy Automation Code", type: "text", section: "Portfolio Info", optional: true },
+  { key: "migrationSource", label: "Migration Source", type: "text", section: "Portfolio Info", optional: true },
 ];
+
+/** Fields governance cares about for the Data Completeness report. */
+export const GOVERNANCE_FIELDS = [
+  "businessOwner",
+  "processSme",
+  "division",
+  "functionalArea",
+  "pasNumber",
+  "businessCaseLink",
+  "sponsorApproval",
+  "automationCost",
+  "netBenefits12",
+  "productionDate",
+  "technology",
+] as const;
+
+/** Expected document types per lifecycle stage. */
+export const EXPECTED_DOCS: Record<string, string[]> = {
+  idea: ["SOP", "Process Flow", "Business Case"],
+  project: ["SOP", "Business Case", "PDD", "SDD", "Approval"],
+  production: ["SOP", "Business Case", "PDD", "SDD", "UAT Evidence", "Approval", "Deployment Plan"],
+  archived: ["SOP"],
+};
 
 export const fieldsForStage = (stage: string) =>
   FIELDS.filter((f) => !f.stages || f.stages.includes(stage === "production" ? "project" : (stage as "idea" | "project")));
@@ -106,7 +133,7 @@ export const isFilled = (v: FieldValue | undefined) =>
   v !== undefined && v !== null && String(v).trim() !== "";
 
 export function completeness(record: Automation) {
-  const fields = fieldsForStage(record.stage);
+  const fields = fieldsForStage(record.stage).filter((f) => !f.optional);
   const missing = fields.filter((f) => !isFilled(record.data[f.key]));
   return {
     total: fields.length,

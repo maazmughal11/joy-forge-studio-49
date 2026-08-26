@@ -10,17 +10,25 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ApprovalsRouteImport } from './routes/approvals'
 import { Route as IdeasRouteImport } from './routes/ideas'
 import { Route as MyWorkRouteImport } from './routes/my-work'
+import { Route as PortfolioRouteImport } from './routes/portfolio'
 import { Route as ProductionRouteImport } from './routes/production'
 import { Route as ProjectsRouteImport } from './routes/projects'
 import { Route as ReportsRouteImport } from './routes/reports'
 import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as WeeklyUpdatesRouteImport } from './routes/weekly-updates'
 import { Route as RecordIdRouteImport } from './routes/record.$id'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApprovalsRoute = ApprovalsRouteImport.update({
+  id: '/approvals',
+  path: '/approvals',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IdeasRoute = IdeasRouteImport.update({
@@ -31,6 +39,11 @@ const IdeasRoute = IdeasRouteImport.update({
 const MyWorkRoute = MyWorkRouteImport.update({
   id: '/my-work',
   path: '/my-work',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PortfolioRoute = PortfolioRouteImport.update({
+  id: '/portfolio',
+  path: '/portfolio',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ProductionRoute = ProductionRouteImport.update({
@@ -53,6 +66,11 @@ const SettingsRoute = SettingsRouteImport.update({
   path: '/settings',
   getParentRoute: () => rootRouteImport,
 } as any)
+const WeeklyUpdatesRoute = WeeklyUpdatesRouteImport.update({
+  id: '/weekly-updates',
+  path: '/weekly-updates',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const RecordIdRoute = RecordIdRouteImport.update({
   id: '/record/$id',
   path: '/record/$id',
@@ -61,76 +79,97 @@ const RecordIdRoute = RecordIdRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/approvals': typeof ApprovalsRoute
   '/ideas': typeof IdeasRoute
   '/my-work': typeof MyWorkRoute
+  '/portfolio': typeof PortfolioRoute
   '/production': typeof ProductionRoute
   '/projects': typeof ProjectsRoute
   '/reports': typeof ReportsRoute
   '/settings': typeof SettingsRoute
+  '/weekly-updates': typeof WeeklyUpdatesRoute
   '/record/$id': typeof RecordIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/approvals': typeof ApprovalsRoute
   '/ideas': typeof IdeasRoute
   '/my-work': typeof MyWorkRoute
+  '/portfolio': typeof PortfolioRoute
   '/production': typeof ProductionRoute
   '/projects': typeof ProjectsRoute
   '/reports': typeof ReportsRoute
   '/settings': typeof SettingsRoute
+  '/weekly-updates': typeof WeeklyUpdatesRoute
   '/record/$id': typeof RecordIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/approvals': typeof ApprovalsRoute
   '/ideas': typeof IdeasRoute
   '/my-work': typeof MyWorkRoute
+  '/portfolio': typeof PortfolioRoute
   '/production': typeof ProductionRoute
   '/projects': typeof ProjectsRoute
   '/reports': typeof ReportsRoute
   '/settings': typeof SettingsRoute
+  '/weekly-updates': typeof WeeklyUpdatesRoute
   '/record/$id': typeof RecordIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/approvals'
     | '/ideas'
     | '/my-work'
+    | '/portfolio'
     | '/production'
     | '/projects'
     | '/reports'
     | '/settings'
+    | '/weekly-updates'
     | '/record/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/approvals'
     | '/ideas'
     | '/my-work'
+    | '/portfolio'
     | '/production'
     | '/projects'
     | '/reports'
     | '/settings'
+    | '/weekly-updates'
     | '/record/$id'
   id:
     | '__root__'
     | '/'
+    | '/approvals'
     | '/ideas'
     | '/my-work'
+    | '/portfolio'
     | '/production'
     | '/projects'
     | '/reports'
     | '/settings'
+    | '/weekly-updates'
     | '/record/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ApprovalsRoute: typeof ApprovalsRoute
   IdeasRoute: typeof IdeasRoute
   MyWorkRoute: typeof MyWorkRoute
+  PortfolioRoute: typeof PortfolioRoute
   ProductionRoute: typeof ProductionRoute
   ProjectsRoute: typeof ProjectsRoute
   ReportsRoute: typeof ReportsRoute
   SettingsRoute: typeof SettingsRoute
+  WeeklyUpdatesRoute: typeof WeeklyUpdatesRoute
   RecordIdRoute: typeof RecordIdRoute
 }
 
@@ -141,6 +180,13 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/approvals': {
+      id: '/approvals'
+      path: '/approvals'
+      fullPath: '/approvals'
+      preLoaderRoute: typeof ApprovalsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/ideas': {
@@ -155,6 +201,13 @@ declare module '@tanstack/react-router' {
       path: '/my-work'
       fullPath: '/my-work'
       preLoaderRoute: typeof MyWorkRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/portfolio': {
+      id: '/portfolio'
+      path: '/portfolio'
+      fullPath: '/portfolio'
+      preLoaderRoute: typeof PortfolioRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/production': {
@@ -185,6 +238,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SettingsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/weekly-updates': {
+      id: '/weekly-updates'
+      path: '/weekly-updates'
+      fullPath: '/weekly-updates'
+      preLoaderRoute: typeof WeeklyUpdatesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/record/$id': {
       id: '/record/$id'
       path: '/record/$id'
@@ -197,12 +257,15 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ApprovalsRoute: ApprovalsRoute,
   IdeasRoute: IdeasRoute,
   MyWorkRoute: MyWorkRoute,
+  PortfolioRoute: PortfolioRoute,
   ProductionRoute: ProductionRoute,
   ProjectsRoute: ProjectsRoute,
   ReportsRoute: ReportsRoute,
   SettingsRoute: SettingsRoute,
+  WeeklyUpdatesRoute: WeeklyUpdatesRoute,
   RecordIdRoute: RecordIdRoute,
 }
 export const routeTree = rootRouteImport
