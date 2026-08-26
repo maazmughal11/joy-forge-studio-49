@@ -44,7 +44,7 @@ const NAV = [
 const initialsOf = (name: string) =>
   name.split(" ").filter(Boolean).slice(0, 2).map((p) => p[0]!.toUpperCase()).join("");
 
-export function AppShell(props: { title: string; subtitle?: string; actions?: ReactNode; children: ReactNode }) {
+export function AppShell(props: { title: string; subtitle?: string; actions?: ReactNode; requires?: string; children: ReactNode }) {
   useEffect(() => {
     hydrate();
     hydrateSession();
@@ -56,7 +56,7 @@ export function AppShell(props: { title: string; subtitle?: string; actions?: Re
   );
 }
 
-function Shell({ title, subtitle, actions: pageActions, children }: { title: string; subtitle?: string; actions?: ReactNode; children: ReactNode }) {
+function Shell({ title, subtitle, actions: pageActions, requires, children }: { title: string; subtitle?: string; actions?: ReactNode; requires?: string; children: ReactNode }) {
   const data = useAppData();
   const { account, can } = useAuth();
   const navigate = useNavigate();
@@ -199,10 +199,22 @@ function Shell({ title, subtitle, actions: pageActions, children }: { title: str
               <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
               {subtitle ? <p className="text-sm text-muted-foreground">{subtitle}</p> : null}
             </div>
-            <div className="flex flex-wrap gap-2">{pageActions}</div>
+            <div className="flex flex-wrap gap-2">{requires && !can(requires) ? null : pageActions}</div>
           </div>
         </header>
-        <main className="flex-1 px-6 py-6">{children}</main>
+        <main className="flex-1 px-6 py-6">
+          {requires && !can(requires) ? (
+            <div className="card-surface mx-auto max-w-md p-8 text-center">
+              <ShieldAlert className="mx-auto h-8 w-8 text-muted-foreground" />
+              <h2 className="mt-3 text-base font-semibold">You don't have access to this area</h2>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Ask an administrator to grant the “{PERMISSION_LABELS[requires] ?? requires}” permission to your account.
+              </p>
+            </div>
+          ) : (
+            children
+          )}
+        </main>
       </div>
 
       <CommandDialog open={searchOpen} onOpenChange={setSearchOpen}>
