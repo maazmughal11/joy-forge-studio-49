@@ -109,24 +109,35 @@ export const authService = {
     );
   },
 
+  /** True when the account is the permanent built-in administrator. */
+  async isProtected(accountId: string) {
+    const accounts = await repositories.users.getUsers();
+    return isBuiltinAdmin(accounts.find((a) => a.id === accountId));
+  },
+
   async resetPin(accountId: string, pin: string, actor: string) {
+    if (await this.isProtected(accountId)) throw new Error(PROTECTED_ACCOUNT_ERROR);
     if (!isValidPin(pin)) throw new Error("PIN must be exactly 4 digits.");
     const pinSalt = newSalt();
     const pinHash = await hashPin(pin, pinSalt);
     await repositories.users.updateUser(accountId, { pinHash, pinSalt }, actor, "PIN reset");
   },
 
-  setActive: (accountId: string, active: boolean, actor: string, detail?: string) =>
-    repositories.users.updateUser(
+  async setActive(accountId: string, active: boolean, actor: string, detail?: string) {
+    if (await this.isProtected(accountId)) throw new Error(PROTECTED_ACCOUNT_ERROR);
+    return repositories.users.updateUser(
       accountId,
       { active },
       actor,
       active ? "User activated" : "User deactivated",
       detail,
-    ),
+    );
+  },
 
-  updateAccount: (accountId: string, patch: Partial<UserAccount>, actor: string, auditAction?: string, detail?: string) =>
-    repositories.users.updateUser(accountId, patch, actor, auditAction, detail),
+  async updateAccount(accountId: string, patch: Partial<UserAccount>, actor: string, auditAction?: string, detail?: string) {
+    if (await this.isProtected(accountId)) throw new Error(PROTECTED_ACCOUNT_ERROR);
+    return repositories.users.updateUser(accountId, patch, actor, auditAction, detail);
+  },
 
   /* ---------- sign in / unlock ---------- */
   async signIn(username: string, pin: string): Promise<SignInResult> {
