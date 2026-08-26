@@ -13,36 +13,58 @@ import {
   Stamp,
   CalendarClock,
   Database,
+  Lock,
+  LogOut,
+  UserRound,
 } from "lucide-react";
 import logoAsset from "@/assets/smurfit-westrock-logo-light2.png.asset.json";
 import { hydrate, useAppData, actions } from "@/lib/store";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { AuthGate } from "@/components/LoginScreen";
+import { authSession, hydrateSession } from "@/lib/auth";
+import { useAuth } from "@/hooks/useAuth";
 
 const NAV = [
-  { to: "/", label: "Home", icon: LayoutDashboard },
-  { to: "/portfolio", label: "Portfolio", icon: Table2 },
-  { to: "/ideas", label: "Idea Tracking", icon: Lightbulb },
-  { to: "/projects", label: "Project Tracking", icon: FolderKanban },
-  { to: "/production", label: "Production Library", icon: Boxes },
-  { to: "/approvals", label: "Approvals", icon: Stamp },
-  { to: "/weekly-updates", label: "Weekly Updates", icon: CalendarClock },
-  { to: "/reports", label: "Reports", icon: BarChart3 },
-  { to: "/my-work", label: "My Work", icon: UserCheck },
-  { to: "/settings", label: "Settings", icon: SettingsIcon },
+  { to: "/", label: "Home", icon: LayoutDashboard, permission: null },
+  { to: "/portfolio", label: "Portfolio", icon: Table2, permission: "portfolio.view" },
+  { to: "/ideas", label: "Idea Tracking", icon: Lightbulb, permission: "ideas.view" },
+  { to: "/projects", label: "Project Tracking", icon: FolderKanban, permission: "projects.view" },
+  { to: "/production", label: "Production Library", icon: Boxes, permission: "production.view" },
+  { to: "/approvals", label: "Approvals", icon: Stamp, permission: "approvals.view" },
+  { to: "/weekly-updates", label: "Weekly Updates", icon: CalendarClock, permission: "updates.view" },
+  { to: "/reports", label: "Reports", icon: BarChart3, permission: "reports.view" },
+  { to: "/my-work", label: "My Work", icon: UserCheck, permission: null },
+  { to: "/settings", label: "Settings", icon: SettingsIcon, permission: "settings.manage" },
 ] as const;
 
-export function AppShell({ title, subtitle, actions: pageActions, children }: { title: string; subtitle?: string; actions?: ReactNode; children: ReactNode }) {
+const initialsOf = (name: string) =>
+  name.split(" ").filter(Boolean).slice(0, 2).map((p) => p[0]!.toUpperCase()).join("");
+
+export function AppShell(props: { title: string; subtitle?: string; actions?: ReactNode; children: ReactNode }) {
+  useEffect(() => {
+    hydrate();
+    hydrateSession();
+  }, []);
+  return (
+    <AuthGate>
+      <Shell {...props} />
+    </AuthGate>
+  );
+}
+
+function Shell({ title, subtitle, actions: pageActions, children }: { title: string; subtitle?: string; actions?: ReactNode; children: ReactNode }) {
   const data = useAppData();
+  const { account, can } = useAuth();
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [searchOpen, setSearchOpen] = useState(false);
+  const [profileOpen, setProfileOpen] = useState(false);
+  const [profileDialog, setProfileDialog] = useState(false);
 
-  useEffect(() => {
-    hydrate();
-  }, []);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -54,6 +76,15 @@ export function AppShell({ title, subtitle, actions: pageActions, children }: { 
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, []);
+
+  // Global search obeys the same authorization rules as normal navigation.
+  const searchableRecords = data.automations.filter((a) =>
+    a.stage === "idea"
+      ? can("ideas.view")
+      : a.stage === "production"
+        ? can("production.view")
+        : can("projects.view"),
+  );
 
   return (
     <div className="flex min-h-screen bg-background text-foreground">
@@ -68,8 +99,9 @@ export function AppShell({ title, subtitle, actions: pageActions, children }: { 
           </div>
         </div>
         <nav className="flex-1 space-y-1 px-3">
-          {NAV.map((item) => {
+          {NAV.filter((item) => !item.permission || can(item.permission)).map((item) => {
             const active = item.to === "/" ? pathname === "/" : pathname.startsWith(item.to);
+
             return (
               <Link
                 key={item.to}
@@ -106,28 +138,61 @@ export function AppShell({ title, subtitle, actions: pageActions, children }: { 
               <kbd className="ml-auto rounded border border-border px-1.5 text-[10px]">⌘K</kbd>
             </button>
             <div className="ml-auto flex items-center gap-2">
-              <Link
-                to="/settings"
-                title="Portfolio data connection"
-                className="hidden items-center gap-1.5 rounded-full border border-border bg-card px-2.5 py-1 text-[11px] text-muted-foreground hover:border-ring lg:inline-flex"
-              >
-                <Database className="h-3.5 w-3.5 text-primary" />
-                {data.settings.storageMode === "shared" ? "Connected — Shared Workspace" : "Local Workspace"}
-              </Link>
-              <span className="text-xs text-muted-foreground">Signed in as</span>
-              <Select value={data.settings.currentUser} onValueChange={(v) => actions.setCurrentUser(v)}>
-                <SelectTrigger className="h-9 w-48 bg-card">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {data.settings.users.map((u) => (
-                    <SelectItem key={u} value={u}>
-                      {u}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              {can("settings.manage") ? (
+                <Link
+                  to="/settings"
+                  title="Portfolio data connection"
+                  className="hidden items-center gap-1.5 rounded-full border border-border bg-card px-2.5 py-1 text-[11px] text-muted-foreground hover:border-ring lg:inline-flex"
+                >
+                  <Database className="h-3.5 w-3.5 text-primary" />
+                  {data.settings.storageMode === "shared" ? "Connected — Shared Workspace" : "Local Workspace"}
+                </Link>
+              ) : null}
+              <Popover open={profileOpen} onOpenChange={setProfileOpen}>
+                <PopoverTrigger asChild>
+                  <button className="flex items-center gap-2.5 rounded-md border border-border bg-card px-2.5 py-1.5 text-left transition-colors hover:border-ring">
+                    <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-xs font-semibold text-primary-foreground">
+                      {initialsOf(account?.displayName ?? "?")}
+                    </span>
+                    <span className="leading-tight">
+                      <span className="block text-[10px] uppercase tracking-wide text-muted-foreground">Signed in as</span>
+                      <span className="block text-sm font-medium">{account?.displayName}</span>
+                    </span>
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent align="end" className="w-60 p-2">
+                  <div className="px-2 py-2">
+                    <p className="text-sm font-medium">{account?.displayName}</p>
+                    <p className="text-xs text-muted-foreground">{account?.role}</p>
+                    <p className="font-mono text-[11px] text-muted-foreground">{account?.username}</p>
+                  </div>
+                  <div className="my-1 h-px bg-border" />
+                  <button
+                    className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-accent"
+                    onClick={() => { setProfileOpen(false); setProfileDialog(true); }}
+                  >
+                    <UserRound className="h-4 w-4" /> My Profile
+                  </button>
+                  <button
+                    className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-accent"
+                    onClick={() => { setProfileOpen(false); authSession.lock(); }}
+                  >
+                    <Lock className="h-4 w-4" /> Lock
+                  </button>
+                  <button
+                    className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm text-destructive hover:bg-accent"
+                    onClick={() => {
+                      setProfileOpen(false);
+                      if (account) actions.logAudit(account.displayName, "Sign out", account.username);
+                      authSession.signOut();
+                    }}
+                  >
+                    <LogOut className="h-4 w-4" /> Sign Out
+                  </button>
+                </PopoverContent>
+              </Popover>
             </div>
+
           </div>
           <div className="flex flex-wrap items-end justify-between gap-3 px-6 pb-4">
             <div>
@@ -145,7 +210,7 @@ export function AppShell({ title, subtitle, actions: pageActions, children }: { 
         <CommandList>
           <CommandEmpty>No matching records.</CommandEmpty>
           <CommandGroup heading="Automations">
-            {data.automations.map((a) => (
+            {searchableRecords.map((a) => (
               <CommandItem
                 key={a.id}
                 value={[
@@ -185,6 +250,44 @@ export function AppShell({ title, subtitle, actions: pageActions, children }: { 
           </CommandGroup>
         </CommandList>
       </CommandDialog>
+
+      <Dialog open={profileDialog} onOpenChange={setProfileDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>My Profile</DialogTitle>
+          </DialogHeader>
+          <dl className="space-y-2 text-sm">
+            <div className="flex justify-between"><dt className="text-muted-foreground">Name</dt><dd className="font-medium">{account?.displayName}</dd></div>
+            <div className="flex justify-between"><dt className="text-muted-foreground">Username</dt><dd className="font-mono">{account?.username}</dd></div>
+            <div className="flex justify-between"><dt className="text-muted-foreground">Role</dt><dd>{account?.role}</dd></div>
+            <div className="flex justify-between"><dt className="text-muted-foreground">Status</dt><dd>{account?.active ? "Active" : "Inactive"}</dd></div>
+            <div className="flex justify-between"><dt className="text-muted-foreground">Last login</dt><dd>{account?.lastLogin ? new Date(account.lastLogin).toLocaleString() : "—"}</dd></div>
+          </dl>
+          <div>
+            <p className="mb-2 text-xs font-medium text-muted-foreground">Effective permissions</p>
+            <div className="flex flex-wrap gap-1.5">
+              {(account?.role === "Administrator" ? ["All application permissions"] : account?.permissions ?? []).map((p) => (
+                <span key={p} className="rounded-full border border-border bg-secondary px-2 py-0.5 text-[11px]">{p}</span>
+              ))}
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <Button variant="secondary" onClick={() => { setProfileDialog(false); authSession.lock(); }}>
+              <Lock className="h-4 w-4" /> Lock
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => {
+                setProfileDialog(false);
+                if (account) actions.logAudit(account.displayName, "Sign out", account.username);
+                authSession.signOut();
+              }}
+            >
+              <LogOut className="h-4 w-4" /> Sign Out
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <div className="fixed bottom-4 right-4 md:hidden">
         <Button size="sm" variant="secondary" onClick={() => setSearchOpen(true)}>

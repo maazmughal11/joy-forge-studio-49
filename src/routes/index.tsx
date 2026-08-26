@@ -11,6 +11,7 @@ import {
   FileBarChart,
 } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
+import { useAuth } from "@/hooks/useAuth";
 import { StatusBadge } from "@/components/StatusBadge";
 import { useAppData, actions } from "@/lib/store";
 import {
@@ -41,7 +42,7 @@ export const Route = createFileRoute("/")({
 function Home() {
   const data = useAppData();
   const navigate = useNavigate();
-  const user = data.settings.currentUser;
+  const { user, can, account } = useAuth();
   const records = data.automations.filter((a) => a.stage !== "archived");
 
   const cards = [
@@ -70,9 +71,11 @@ function Home() {
       subtitle="Your automation portfolio at a glance — everything stored locally on this machine."
       actions={
         <>
-          <Button onClick={createIdea}>
-            <Plus className="h-4 w-4" /> Submit Idea
-          </Button>
+          {can("ideas.create") ? (
+            <Button onClick={createIdea}>
+              <Plus className="h-4 w-4" /> Submit Idea
+            </Button>
+          ) : null}
           <Button variant="secondary" asChild>
             <Link to="/projects">Update Project</Link>
           </Button>

@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { AppShell } from "@/components/AppShell";
+import { useAuth } from "@/hooks/useAuth";
 import { StatusBadge } from "@/components/StatusBadge";
 import { useAppData } from "@/lib/store";
 import {
@@ -53,7 +54,7 @@ function List({ title, records, note }: { title: string; records: Automation[]; 
 
 function MyWork() {
   const data = useAppData();
-  const user = data.settings.currentUser;
+  const { user, can, account } = useAuth();
   const all = data.automations.filter((a) => a.stage !== "archived");
   const mine = all.filter((a) => [a.data['submittedBy'], a.data['businessAnalyst']].includes(user));
 

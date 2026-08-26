@@ -31,6 +31,8 @@ export function RecordTable({
   columnPicker = false,
   defaultHidden = [],
   initialFilters,
+  canExport = true,
+  onRowsChange,
 }: {
   records: Automation[];
   columns: Column[];
@@ -40,6 +42,8 @@ export function RecordTable({
   columnPicker?: boolean;
   defaultHidden?: string[];
   initialFilters?: Record<string, string>;
+  canExport?: boolean;
+  onRowsChange?: (rows: Automation[]) => void;
 }) {
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState<{ key: string; dir: 1 | -1 }>({ key: "modified", dir: -1 });
@@ -80,6 +84,10 @@ export function RecordTable({
       return String(av).localeCompare(String(bv)) * sort.dir;
     });
   }, [records, query, filters, sort, columns, filterKeys]);
+
+  useEffect(() => {
+    onRowsChange?.(rows);
+  }, [rows, onRowsChange]);
 
   const exportRows = () => ({
     headers: [...visibleColumns.map((c) => c.label), "Data Completeness %"],
@@ -143,7 +151,7 @@ export function RecordTable({
               </PopoverContent>
             </Popover>
           ) : null}
-          {exportName ? (
+          {exportName && canExport ? (
             <>
               <Button
                 variant="outline"

@@ -3,6 +3,7 @@ import { useMemo, useRef, useState } from "react";
 import { Download, Upload, RotateCcw, X, Plus, Database, Save, HardDriveDownload, FileSpreadsheet } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
+import { useAuth } from "@/hooks/useAuth";
 import { useAppData, actions } from "@/lib/store";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -292,7 +293,7 @@ function SettingsPage() {
   const data = useAppData();
   const fileRef = useRef<HTMLInputElement>(null);
   const [path, setPath] = useState(data.settings.dataFolderPath);
-  const user = data.settings.currentUser;
+  const { user, can, account } = useAuth();
   const s = data.settings;
 
   const exportFile = () => {

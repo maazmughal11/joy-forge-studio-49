@@ -2,6 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { Plus, Table2, Columns3 } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
+import { useAuth } from "@/hooks/useAuth";
 import { RecordTable, type Column } from "@/components/RecordTable";
 import { StatusBadge } from "@/components/StatusBadge";
 import { useAppData, actions } from "@/lib/store";
@@ -36,7 +37,7 @@ const VIEWS = [
 function Projects() {
   const data = useAppData();
   const navigate = useNavigate();
-  const user = data.settings.currentUser;
+  const { user, can, account } = useAuth();
   const search = Route.useSearch();
   const [view, setView] = useState<(typeof VIEWS)[number]["key"]>(
     (VIEWS.find((v) => v.key === search.view)?.key ?? "active") as (typeof VIEWS)[number]["key"],
@@ -84,14 +85,16 @@ function Projects() {
               <Columns3 className="h-3.5 w-3.5" /> Swimlanes
             </button>
           </div>
-          <Button
-            onClick={() => {
-              const rec = actions.createRecord("project", user);
-              navigate({ to: "/record/$id", params: { id: rec.id } });
-            }}
-          >
-            <Plus className="h-4 w-4" /> New Project
-          </Button>
+          {can("projects.create") ? (
+            <Button
+              onClick={() => {
+                const rec = actions.createRecord("project", user);
+                navigate({ to: "/record/$id", params: { id: rec.id } });
+              }}
+            >
+              <Plus className="h-4 w-4" /> New Project
+            </Button>
+          ) : null}
         </>
       }
     >

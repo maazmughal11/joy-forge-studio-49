@@ -1,9 +1,10 @@
 import { useSyncExternalStore } from "react";
-import type { AdminLogEntry, AppData, Approval, Automation, FieldValue, HistoryEntry, Stage } from "./types";
+import type { AdminLogEntry, AppData, Approval, Automation, FieldValue, HistoryEntry, Role, Stage, UserAccount } from "./types";
 import { seedData, DEFAULT_OPTIONS, DEFAULT_USERS } from "./seed";
 import { FIELDS } from "./fields";
+import { ROLE_PERMISSIONS } from "./auth";
 
-const STORAGE_KEY = "rpa-portfolio-data-v4";
+const STORAGE_KEY = "rpa-portfolio-data-v5";
 
 let state: AppData = seedData();
 let hydrated = false;
@@ -29,6 +30,7 @@ function normalize(parsed: AppData): AppData {
     ...parsed,
     backups: parsed.backups ?? [],
     adminLog: parsed.adminLog ?? [],
+    accounts: parsed.accounts ?? [],
     settings: {
       ...base.settings,
       ...parsed.settings,
@@ -45,6 +47,7 @@ function normalize(parsed: AppData): AppData {
     })),
   };
 }
+
 
 export function hydrate() {
   if (hydrated || typeof window === "undefined") return;
@@ -372,6 +375,70 @@ export const actions = {
     setState(normalize(parsed));
   },
   resetToSeed() {
-    setState(seedData());
+    const accounts = state.accounts;
+    const seeded = seedData();
+    setState({ ...seeded, accounts });
+  },
+
+  // ---------- Accounts, authentication & audit ----------
+  logAudit(user: string, action: string, detail?: string) {
+    setState({ ...state, adminLog: [adminEntry(user, action, detail), ...state.adminLog] });
+  },
+  createAccount(
+    input: {
+      firstName: string;
+      lastName: string;
+      username: string;
+      pinHash: string;
+      pinSalt: string;
+      role: Role;
+      permissions?: string[];
+    },
+    actor: string,
+  ): UserAccount {
+    const now = new Date().toISOString();
+    const displayName = `${input.firstName} ${input.lastName}`.trim();
+    const account: UserAccount = {
+      id: uid("usr"),
+      firstName: input.firstName,
+      lastName: input.lastName,
+      displayName,
+      username: input.username.toLowerCase(),
+      pinHash: input.pinHash,
+      pinSalt: input.pinSalt,
+      role: input.role,
+      permissions: input.permissions ?? [...ROLE_PERMISSIONS[input.role]],
+      active: true,
+      createdDate: now,
+      modifiedDate: now,
+    };
+    const users = state.settings.users.includes(displayName) ? state.settings.users : [...state.settings.users, displayName];
+    setState({
+      ...state,
+      accounts: [...state.accounts, account],
+      settings: { ...state.settings, users, options: { ...state.settings.options, users } },
+      adminLog: [adminEntry(actor, "User created", `${displayName} (${account.username}) · ${account.role}`), ...state.adminLog],
+    });
+    return account;
+  },
+  updateAccount(id: string, patch: Partial<UserAccount>, actor: string, auditAction?: string, detail?: string) {
+    const accounts = state.accounts.map((a) =>
+      a.id === id ? { ...a, ...patch, modifiedDate: new Date().toISOString() } : a,
+    );
+    setState({
+      ...state,
+      accounts,
+      adminLog: auditAction ? [adminEntry(actor, auditAction, detail), ...state.adminLog] : state.adminLog,
+    });
+  },
+  recordLogin(id: string) {
+    const acct = state.accounts.find((a) => a.id === id);
+    setState({
+      ...state,
+      accounts: state.accounts.map((a) => (a.id === id ? { ...a, lastLogin: new Date().toISOString() } : a)),
+      settings: { ...state.settings, currentUser: acct?.displayName ?? state.settings.currentUser },
+      adminLog: [adminEntry(acct?.displayName ?? "Unknown", "Successful login", acct?.username), ...state.adminLog],
+    });
   },
 };
+

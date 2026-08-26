@@ -2,6 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { Plus } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
+import { useAuth } from "@/hooks/useAuth";
 import { RecordTable, type Column } from "@/components/RecordTable";
 import { useAppData, actions } from "@/lib/store";
 import { awaitingApproval, awaitingAssessment, nameOf, onHold, readyToMove } from "@/lib/derive";
@@ -34,7 +35,7 @@ const VIEWS = [
 function Ideas() {
   const data = useAppData();
   const navigate = useNavigate();
-  const user = data.settings.currentUser;
+  const { user, can, account } = useAuth();
   const search = Route.useSearch();
   const [view, setView] = useState<(typeof VIEWS)[number]["key"]>(
     (VIEWS.find((v) => v.key === search.view)?.key ?? "all") as (typeof VIEWS)[number]["key"],
@@ -64,6 +65,7 @@ function Ideas() {
       title="Idea Tracking"
       subtitle="Opportunity initial assessment — discovery pipeline"
       actions={
+        can("ideas.create") ? (
         <Button
           onClick={() => {
             const rec = actions.createRecord("idea", user);
@@ -72,6 +74,7 @@ function Ideas() {
         >
           <Plus className="h-4 w-4" /> New Idea
         </Button>
+        ) : null
       }
     >
       <div className="mb-4 flex flex-wrap gap-2">

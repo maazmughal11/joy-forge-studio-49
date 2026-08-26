@@ -362,6 +362,19 @@ function Reports() {
 
         {tab === "Pipeline" ? (
           <div className="grid gap-4 lg:grid-cols-2">
+            <Panel title="Pipeline trend (monthly movement)" className="lg:col-span-2">
+              <LineChart data={pipeTrend}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
+                <XAxis dataKey="month" tick={{ fontSize: 11 }} />
+                <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
+                <Tooltip />
+                <Legend />
+                <Line type="monotone" dataKey="Discovery" stroke="var(--chart-1)" strokeWidth={2} />
+                <Line type="monotone" dataKey="Pipeline" stroke="var(--chart-3)" strokeWidth={2} />
+                <Line type="monotone" dataKey="Production" stroke="var(--chart-2)" strokeWidth={2} />
+                <Line type="monotone" dataKey="New" name="New ideas" stroke="var(--chart-4)" strokeWidth={2} strokeDasharray="4 3" />
+              </LineChart>
+            </Panel>
             <Panel title="Idea funnel by opportunity status">
               <BarChart data={byOppStatus} layout="vertical" margin={{ left: 60 }}>
                 <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />

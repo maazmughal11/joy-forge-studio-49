@@ -144,3 +144,66 @@ export function documentCoverage(a: Automation) {
     percent: expected.length ? Math.round(((expected.length - missing.length) / expected.length) * 100) : 100,
   };
 }
+
+// ---------- Trend analytics ----------
+
+function isoWeekStart(d: Date) {
+  const x = new Date(d);
+  x.setHours(0, 0, 0, 0);
+  x.setDate(x.getDate() - ((x.getDay() + 6) % 7));
+  return x;
+}
+
+const shortDate = (d: Date) => d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+
+/** Weekly RAG distribution and average completion across a set of records. */
+export function healthTrend(records: Automation[], weeks = 12) {
+  const start = isoWeekStart(new Date());
+  const out: { week: string; Green: number; Amber: number; Red: number; avgComplete: number }[] = [];
+  for (let i = weeks - 1; i >= 0; i--) {
+    const from = new Date(start);
+    from.setDate(from.getDate() - i * 7);
+    const to = new Date(from);
+    to.setDate(to.getDate() + 7);
+    const row = { week: shortDate(from), Green: 0, Amber: 0, Red: 0, avgComplete: 0 };
+    let pctSum = 0;
+    let pctCount = 0;
+    for (const a of records) {
+      // Latest update on or before the end of this week reflects that week's reported health.
+      const upto = a.updates.filter((u) => new Date(u.date).getTime() < to.getTime());
+      const latest = upto[upto.length - 1];
+      if (!latest) continue;
+      if (new Date(latest.date).getTime() < from.getTime() - 21 * 86400000) continue;
+      row[latest.rag] += 1;
+      pctSum += latest.percentComplete;
+      pctCount += 1;
+    }
+    row.avgComplete = pctCount ? Math.round(pctSum / pctCount) : 0;
+    out.push(row);
+  }
+  return out;
+}
+
+/** Monthly movement of records into each lifecycle stage. */
+export function pipelineTrend(records: Automation[], months = 12) {
+  const now = new Date();
+  const out: { month: string; Discovery: number; Pipeline: number; Production: number; New: number }[] = [];
+  for (let i = months - 1; i >= 0; i--) {
+    const from = new Date(now.getFullYear(), now.getMonth() - i, 1);
+    const to = new Date(now.getFullYear(), now.getMonth() - i + 1, 1);
+    const label = from.toLocaleDateString(undefined, { month: "short", year: "2-digit" });
+    const created = records.filter((a) => {
+      const t = new Date(a.createdDate).getTime();
+      return t >= from.getTime() && t < to.getTime();
+    });
+    const existing = records.filter((a) => new Date(a.createdDate).getTime() < to.getTime());
+    out.push({
+      month: label,
+      New: created.length,
+      Discovery: existing.filter((a) => a.stage === "idea").length,
+      Pipeline: existing.filter((a) => a.stage === "project").length,
+      Production: existing.filter((a) => a.stage === "production" && new Date(a.modifiedDate).getTime() < to.getTime()).length,
+    });
+  }
+  return out;
+}

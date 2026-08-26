@@ -3,6 +3,7 @@ import { useState } from "react";
 import { ArrowRight, ExternalLink, Plus, Trash2, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
+import { useAuth } from "@/hooks/useAuth";
 import { StageProgress } from "@/components/StageProgress";
 import { StatusBadge } from "@/components/StatusBadge";
 import { FieldInput } from "@/components/FieldInput";
@@ -42,7 +43,7 @@ function RecordPage() {
   const data = useAppData();
   const record = useAutomation(id);
   const navigate = useNavigate();
-  const user = data.settings.currentUser;
+  const { user, can, account } = useAuth();
 
   if (!record) {
     return (
