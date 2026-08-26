@@ -61,6 +61,12 @@ export const Route = createFileRoute("/reports")({
 });
 
 const COLORS = ["var(--chart-1)", "var(--chart-2)", "var(--chart-3)", "var(--chart-4)", "var(--chart-5)"];
+const RAG_COLORS: Record<string, string> = {
+  Green: "var(--rag-green)",
+  Amber: "var(--rag-amber)",
+  Red: "var(--rag-red)",
+};
+const RAG_ORDER = ["Green", "Amber", "Red"];
 const TABS = ["Executive", "Pipeline", "Delivery", "Financial", "Governance"] as const;
 type Tab = (typeof TABS)[number];
 const ALL = "__all__";
