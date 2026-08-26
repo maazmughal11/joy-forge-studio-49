@@ -14,7 +14,29 @@
  */
 const path = require("node:path");
 const fs = require("node:fs");
-const { app, BrowserWindow, ipcMain, shell } = require("electron");
+const { app, BrowserWindow, ipcMain, shell, protocol, net } = require("electron");
+
+// ES modules cannot be loaded over file:// in Chromium, so the packaged app is
+// served from an internal, read-only app:// protocol backed by local files.
+protocol.registerSchemesAsPrivileged([
+  { scheme: "app", privileges: { standard: true, secure: true, supportFetchAPI: true, stream: true } },
+]);
+
+const RENDERER_DIR = path.join(__dirname, "..", "renderer");
+
+function registerAppProtocol() {
+  protocol.handle("app", (request) => {
+    const { pathname } = new URL(request.url);
+    const decoded = decodeURIComponent(pathname);
+    const relative = decoded === "/" ? "/index.electron.html" : decoded;
+    const target = path.join(RENDERER_DIR, path.normalize(relative));
+    if (!target.startsWith(RENDERER_DIR)) return new Response("Forbidden", { status: 403 });
+    const file = fs.existsSync(target) && fs.statSync(target).isFile()
+      ? target
+      : path.join(RENDERER_DIR, "index.electron.html");
+    return net.fetch("file://" + file);
+  });
+}
 
 const isDev = !app.isPackaged;
 const DEV_SERVER_URL = process.env.ELECTRON_RENDERER_URL || "http://localhost:5199/index.electron.html";
@@ -73,13 +95,14 @@ function createWindow() {
   if (isDev) {
     win.loadURL(DEV_SERVER_URL);
   } else {
-    win.loadFile(path.join(__dirname, "..", "renderer", "index.electron.html"));
+    win.loadURL("app://local/index.electron.html");
   }
 
   return win;
 }
 
 app.whenReady().then(() => {
+  registerAppProtocol();
   tryOpenDatabase();
 
   ipcMain.handle("rpa:data", async (_event, message) => {
