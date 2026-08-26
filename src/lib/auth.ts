@@ -126,6 +126,16 @@ export const suggestUsername = (first: string, last: string) =>
 
 export const isValidPin = (pin: string) => /^\d{4}$/.test(pin);
 
+/**
+ * Permanent built-in administrator. This account always exists, always holds
+ * every permission and can never be deactivated, edited or deleted.
+ */
+export const BUILTIN_ADMIN_USERNAME = "admin";
+export const BUILTIN_ADMIN_PASSWORD = "admin";
+
+export const isBuiltinAdmin = (account: { username?: string } | null | undefined) =>
+  account?.username?.toLowerCase() === BUILTIN_ADMIN_USERNAME;
+
 const enc = new TextEncoder();
 
 function toHex(buf: ArrayBuffer) {
