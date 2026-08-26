@@ -49,6 +49,7 @@ const initialsOf = (name: string) =>
 export function AppShell(props: { title: string; subtitle?: string; actions?: ReactNode; requires?: string; children: ReactNode }) {
   useEffect(() => {
     initializeData();
+    void authService.ensureBuiltinAdmin();
     authService.restoreSession();
   }, []);
   return (

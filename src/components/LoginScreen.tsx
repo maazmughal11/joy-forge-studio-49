@@ -217,15 +217,14 @@ function SignInScreen({ lockedAccount }: { lockedAccount?: UserAccount | null })
             />
           </div>
           <div>
-            <Label htmlFor="login-pin" className="text-xs">PIN</Label>
+            <Label htmlFor="login-pin" className="text-xs">PIN or password</Label>
             <Input
               id="login-pin"
               autoFocus={!!lockedAccount}
               type="password"
-              inputMode="numeric"
-              maxLength={4}
+              maxLength={32}
               value={pin}
-              onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, 4))}
+              onChange={(e) => setPin(e.target.value)}
               placeholder="••••"
               className="mt-1 bg-card text-center text-lg tracking-[0.6em] text-foreground"
             />
