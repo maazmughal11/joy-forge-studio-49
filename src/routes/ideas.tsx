@@ -62,6 +62,7 @@ function Ideas() {
 
   return (
     <AppShell
+      requires={"ideas.view"}
       title="Idea Tracking"
       subtitle="Opportunity initial assessment — discovery pipeline"
       actions={

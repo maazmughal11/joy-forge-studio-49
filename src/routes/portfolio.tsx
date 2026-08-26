@@ -137,6 +137,7 @@ function Portfolio() {
 
   return (
     <AppShell
+      requires={"portfolio.view"}
       title="Portfolio"
       subtitle="Master inventory of every automation across the Center of Excellence"
       actions={

@@ -67,6 +67,7 @@ function Projects() {
 
   return (
     <AppShell
+      requires={"projects.view"}
       title="Project Tracking"
       subtitle="Pipeline and deployed automations"
       actions={

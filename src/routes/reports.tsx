@@ -239,6 +239,7 @@ function Reports() {
 
   return (
     <AppShell
+      requires={"reports.view"}
       title="Reports"
       subtitle="Computed locally from your portfolio data — no external BI tool required"
       actions={

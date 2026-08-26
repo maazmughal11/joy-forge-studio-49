@@ -128,6 +128,7 @@ function Approvals() {
 
   return (
     <AppShell
+      requires={"approvals.view"}
       title="Approvals"
       subtitle="Centralized view of every approval captured against the automation portfolio"
       actions={

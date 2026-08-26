@@ -16,6 +16,7 @@ import {
   Lock,
   LogOut,
   UserRound,
+  ShieldAlert,
 } from "lucide-react";
 import logoAsset from "@/assets/smurfit-westrock-logo-light2.png.asset.json";
 import { hydrate, useAppData, actions } from "@/lib/store";
@@ -25,7 +26,7 @@ import { CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, C
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AuthGate } from "@/components/LoginScreen";
-import { authSession, hydrateSession } from "@/lib/auth";
+import { authSession, hydrateSession, PERMISSION_LABELS } from "@/lib/auth";
 import { useAuth } from "@/hooks/useAuth";
 
 const NAV = [

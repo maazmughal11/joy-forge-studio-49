@@ -309,6 +309,7 @@ function SettingsPage() {
 
   return (
     <AppShell title="Settings" subtitle="Workspace storage, migration, backups, team members and option lists">
+      requires={"settings.manage"}
       <div className="grid gap-4 lg:grid-cols-2">
         <section className="card-surface p-4">
           <h2 className="flex items-center gap-2 text-sm font-semibold">

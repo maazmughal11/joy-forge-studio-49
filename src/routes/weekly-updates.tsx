@@ -144,6 +144,7 @@ function WeeklyUpdates() {
 
   return (
     <AppShell
+      requires={"updates.view"}
       title="Weekly Updates"
       subtitle="Portfolio-wide status reporting — a permanent historical log of every project update"
       actions={
