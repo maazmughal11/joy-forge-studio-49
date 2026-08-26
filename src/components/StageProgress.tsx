@@ -1,5 +1,5 @@
 import { LIFECYCLE, currentLifecycleStep } from "@/lib/fields";
-import type { Automation } from "@/lib/types";
+import type { Automation } from "@/domain/models";
 import { cn } from "@/lib/utils";
 import { Check } from "lucide-react";
 

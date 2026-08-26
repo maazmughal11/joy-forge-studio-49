@@ -5,7 +5,7 @@ import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
 import { UsersAdmin } from "@/components/UsersAdmin";
 import { useAuth } from "@/hooks/useAuth";
-import { useAppData, actions } from "@/lib/store";
+import { useAppData, actions } from "@/data";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -14,7 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { FIELDS } from "@/lib/fields";
 import { downloadCsv } from "@/lib/export";
 import { cn } from "@/lib/utils";
-import type { Automation, FieldValue, Stage } from "@/lib/types";
+import type { Automation, FieldValue, Stage } from "@/domain/models";
 
 export const Route = createFileRoute("/settings")({
   head: () => ({

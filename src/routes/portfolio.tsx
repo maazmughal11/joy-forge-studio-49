@@ -1,11 +1,11 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useCallback, useMemo, useState } from "react";
 import { Plus } from "lucide-react";
-import type { Automation } from "@/lib/types";
+import type { Automation } from "@/domain/models";
 import { AppShell } from "@/components/AppShell";
 import { useAuth } from "@/hooks/useAuth";
 import { RecordTable, type Column } from "@/components/RecordTable";
-import { useAppData, actions } from "@/lib/store";
+import { useAppData, actions } from "@/data";
 import {
   autoId,
   cancelled,

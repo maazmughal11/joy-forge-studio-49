@@ -19,14 +19,15 @@ import {
   ShieldAlert,
 } from "lucide-react";
 import logoAsset from "@/assets/smurfit-westrock-logo-light2.png.asset.json";
-import { hydrate, useAppData, actions } from "@/lib/store";
+import { useAppData, actions, initializeData } from "@/data";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { AuthGate } from "@/components/LoginScreen";
-import { authSession, hydrateSession, PERMISSION_LABELS } from "@/lib/auth";
+import { PERMISSION_LABELS } from "@/lib/auth";
+import { authService } from "@/services/auth-service";
 import { useAuth } from "@/hooks/useAuth";
 
 const NAV = [
@@ -47,8 +48,8 @@ const initialsOf = (name: string) =>
 
 export function AppShell(props: { title: string; subtitle?: string; actions?: ReactNode; requires?: string; children: ReactNode }) {
   useEffect(() => {
-    hydrate();
-    hydrateSession();
+    initializeData();
+    authService.restoreSession();
   }, []);
   return (
     <AuthGate>
@@ -176,7 +177,7 @@ function Shell({ title, subtitle, actions: pageActions, requires, children }: { 
                   </button>
                   <button
                     className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-sm hover:bg-accent"
-                    onClick={() => { setProfileOpen(false); authSession.lock(); }}
+                    onClick={() => { setProfileOpen(false); authService.lock(); }}
                   >
                     <Lock className="h-4 w-4" /> Lock
                   </button>
@@ -185,7 +186,7 @@ function Shell({ title, subtitle, actions: pageActions, requires, children }: { 
                     onClick={() => {
                       setProfileOpen(false);
                       if (account) actions.logAudit(account.displayName, "Sign out", account.username);
-                      authSession.signOut();
+                      authService.signOut();
                     }}
                   >
                     <LogOut className="h-4 w-4" /> Sign Out
@@ -285,7 +286,7 @@ function Shell({ title, subtitle, actions: pageActions, requires, children }: { 
             </div>
           </div>
           <div className="flex gap-2">
-            <Button variant="secondary" onClick={() => { setProfileDialog(false); authSession.lock(); }}>
+            <Button variant="secondary" onClick={() => { setProfileDialog(false); authService.lock(); }}>
               <Lock className="h-4 w-4" /> Lock
             </Button>
             <Button
@@ -293,7 +294,7 @@ function Shell({ title, subtitle, actions: pageActions, requires, children }: { 
               onClick={() => {
                 setProfileDialog(false);
                 if (account) actions.logAudit(account.displayName, "Sign out", account.username);
-                authSession.signOut();
+                authService.signOut();
               }}
             >
               <LogOut className="h-4 w-4" /> Sign Out

@@ -4,7 +4,7 @@ import { Plus } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { useAuth } from "@/hooks/useAuth";
 import { RecordTable, type Column } from "@/components/RecordTable";
-import { useAppData, actions } from "@/lib/store";
+import { useAppData, actions } from "@/data";
 import { awaitingApproval, awaitingAssessment, nameOf, onHold, readyToMove } from "@/lib/derive";
 import { priorityFromScoring } from "@/lib/fields";
 import { Button } from "@/components/ui/button";
@@ -51,6 +51,8 @@ function Ideas() {
   const columns: Column[] = [
     { key: "name", label: "Opportunity Name", value: nameOf },
     { key: "division", label: "Division", value: (a) => String(a.data['division'] ?? "") },
+    { key: "region", label: "Region", value: (a) => String(a.data['region'] ?? "") },
+    { key: "fy", label: "FY", badge: true, value: (a) => String(a.data['year'] ?? "") },
     { key: "area", label: "Functional Area", value: (a) => String(a.data['functionalArea'] ?? "") },
     { key: "status", label: "Opportunity Status", badge: true, value: (a) => String(a.data['opportunityStatus'] ?? "") },
     { key: "owner", label: "Business Owner", value: (a) => String(a.data['businessOwner'] ?? "") },

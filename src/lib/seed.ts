@@ -48,6 +48,7 @@ type SeedSpec = {
   region: string;
   age: number;
   requestType?: string;
+  fy?: number;
 };
 
 const specs: SeedSpec[] = [
@@ -86,6 +87,27 @@ const specs: SeedSpec[] = [
   { name: "Daily Production Yield Report", stage: "production", category: "Deployed", oppStatus: "Business Case Approved", projStatus: "Production", division: "Manufacturing", area: "Reporting", tech: "Python Script", owner: "Maaz Mughal", sme: "Clay Hartzog", ba: "Jay Jefferson", benefits: 262000, hours: 4300, scoring: [5, 3, 2, 4], region: "Europe", age: 445 },
   { name: "Dunning Letter Generation", stage: "production", category: "Deployed", oppStatus: "Business Case Approved", projStatus: "Production", division: "Finance", area: "Accounts Receivable", tech: "Blue Prism", owner: "Ana D Prado", sme: "Maaz Mughal", ba: "Clay Hartzog", benefits: 174000, hours: 2900, scoring: [4, 3, 2, 4], region: "Middle East", age: 275 },
   { name: "License Renewal Tracking", stage: "production", category: "Deployed", oppStatus: "Business Case Approved", projStatus: "Production", division: "IT", area: "Reporting", tech: "Power Automate", owner: "Wai Wan", sme: "Lisa Lagasse", ba: "Ana D Prado", benefits: 71000, hours: 1150, scoring: [3, 1, 1, 2], region: "Africa", age: 210, requestType: "Enhancement" },
+
+  // ---------- Additional discovery variety ----------
+  { name: "Rebate Accrual Calculation", stage: "idea", category: "Discovery", oppStatus: "Deep Dive", division: "Finance", area: "Accounts Receivable", tech: "UiPath", owner: "Lisa Lagasse", sme: "Clay Hartzog", ba: "Jay Jefferson", benefits: 143000, hours: 2250, scoring: [4, 3, 2, 4], region: "Latin America", age: 27, fy: 2026 },
+  { name: "Carrier Rate Card Upload", stage: "idea", category: "Discovery", oppStatus: "Initial Assessment", division: "Supply Chain", area: "Procurement", tech: "Python Script", owner: "Wai Wan", sme: "Maaz Mughal", ba: "Lisa Lagasse", benefits: 61000, hours: 880, scoring: [3, 2, 2, 2], region: "Africa", age: 16, fy: 2026 },
+  { name: "Regulatory Filing Assembly", stage: "idea", category: "Discovery", oppStatus: "On Hold", division: "Legal", area: "Reporting", tech: "Automation Anywhere", owner: "Ana D Prado", sme: "Wai Wan", ba: "Clay Hartzog", benefits: 155000, hours: 2400, scoring: [4, 4, 5, 4], region: "Europe", age: 74, fy: 2025 },
+  { name: "Plant Safety Incident Digest", stage: "idea", category: "Discovery", oppStatus: "Ideation", division: "Manufacturing", area: "Quality", tech: "Power Automate", owner: "Jay Jefferson", sme: "Ana D Prado", ba: "Maaz Mughal", benefits: 47000, hours: 700, scoring: [2, 2, 2, 3], region: "Asia", age: 4, fy: 2026 },
+  { name: "Duplicate Payment Detection", stage: "idea", category: "Discovery", oppStatus: "Business Case Approved", division: "Finance", area: "Accounts Payable", tech: "UiPath", owner: "Maaz Mughal", sme: "Lisa Lagasse", ba: "Wai Wan", benefits: 288000, hours: 4600, scoring: [5, 3, 2, 5], region: "North America", age: 68, fy: 2026 },
+
+  // ---------- Additional pipeline variety ----------
+  { name: "Credit Memo Automation", stage: "project", category: "Pipeline", oppStatus: "Business Case Approved", projStatus: "Development", division: "Commercial", area: "Accounts Receivable", tech: "Power Automate", owner: "Ana D Prado", sme: "Jay Jefferson", ba: "Lisa Lagasse", benefits: 187000, hours: 2950, scoring: [4, 3, 2, 4], region: "Latin America", age: 96, fy: 2026, requestType: "Enhancement" },
+  { name: "Inventory Cycle Count Sync", stage: "project", category: "Pipeline", oppStatus: "Business Case Approved", projStatus: "UAT", division: "Manufacturing", area: "Reporting", tech: "Blue Prism", owner: "Clay Hartzog", sme: "Ana D Prado", ba: "Maaz Mughal", benefits: 213000, hours: 3450, scoring: [4, 4, 3, 4], region: "Europe", age: 165, fy: 2025 },
+  { name: "Employee Offboarding Access", stage: "project", category: "Pipeline", oppStatus: "Business Case Approved", projStatus: "Hypercare", division: "IT", area: "Reporting", tech: "Python Script", owner: "Wai Wan", sme: "Maaz Mughal", ba: "Ana D Prado", benefits: 104000, hours: 1620, scoring: [3, 3, 4, 4], region: "Middle East", age: 240, fy: 2025 },
+  { name: "Customer Quote Generation", stage: "project", category: "Pipeline", oppStatus: "Business Case Approved", projStatus: "Requirements", division: "Commercial", area: "Order Management", tech: "UiPath", owner: "Lisa Lagasse", sme: "Clay Hartzog", ba: "Jay Jefferson", benefits: 259000, hours: 4100, scoring: [5, 4, 3, 5], region: "Asia", age: 38, fy: 2026 },
+  { name: "AP Statement Reconciliation", stage: "project", category: "Pipeline", oppStatus: "On Hold", projStatus: "On Hold", division: "Finance", area: "Accounts Payable", tech: "Automation Anywhere", owner: "Jay Jefferson", sme: "Wai Wan", ba: "Clay Hartzog", benefits: 121000, hours: 1900, scoring: [3, 4, 4, 2], region: "Africa", age: 132, fy: 2025 },
+
+  // ---------- Additional production variety ----------
+  { name: "Sales Commission Calculation", stage: "production", category: "Deployed", oppStatus: "Business Case Approved", projStatus: "Production", division: "Commercial", area: "Reporting", tech: "UiPath", owner: "Maaz Mughal", sme: "Ana D Prado", ba: "Lisa Lagasse", benefits: 332000, hours: 5400, scoring: [5, 3, 2, 5], region: "North America", age: 560, fy: 2024 },
+  { name: "Vendor Invoice OCR Intake", stage: "production", category: "Deployed", oppStatus: "Business Case Approved", projStatus: "Production", division: "Finance", area: "Accounts Payable", tech: "Automation Anywhere", owner: "Clay Hartzog", sme: "Jay Jefferson", ba: "Wai Wan", benefits: 465000, hours: 7600, scoring: [5, 5, 3, 5], region: "Europe", age: 610, fy: 2024 },
+  { name: "Warehouse Slotting Report", stage: "production", category: "Deployed", oppStatus: "Business Case Approved", projStatus: "Production", division: "Supply Chain", area: "Reporting", tech: "Python Script", owner: "Lisa Lagasse", sme: "Maaz Mughal", ba: "Jay Jefferson", benefits: 128000, hours: 2050, scoring: [3, 2, 2, 3], region: "Latin America", age: 320, fy: 2025 },
+  { name: "HR Case Auto-Classification", stage: "production", category: "Deployed", oppStatus: "Business Case Approved", projStatus: "Production", division: "Human Resources", area: "Customer Service", tech: "Power Automate", owner: "Ana D Prado", sme: "Lisa Lagasse", ba: "Maaz Mughal", benefits: 89000, hours: 1450, scoring: [3, 2, 1, 3], region: "Asia", age: 385, fy: 2025 },
+  { name: "Tax Provision Data Pull", stage: "production", category: "Deployed", oppStatus: "Business Case Approved", projStatus: "Production", division: "Finance", area: "Reporting", tech: "Blue Prism", owner: "Jay Jefferson", sme: "Clay Hartzog", ba: "Ana D Prado", benefits: 241000, hours: 3900, scoring: [4, 4, 3, 4], region: "Middle East", age: 470, fy: 2025 },
 
   // ---------- Archived ----------
   { name: "Legacy Fax Order Capture", stage: "archived", category: "Deployed", oppStatus: "Cancelled", projStatus: "On Hold", division: "Commercial", area: "Order Management", tech: "Blue Prism", owner: "Clay Hartzog", sme: "Jay Jefferson", ba: "Maaz Mughal", benefits: 42000, hours: 620, scoring: [2, 3, 4, 1], region: "North America", age: 610 },
@@ -202,6 +224,14 @@ function buildApprovals(spec: SeedSpec, i: number): Approval[] {
   return out;
 }
 
+function fiscalYear(spec: SeedSpec): number {
+  if (spec.fy) return spec.fy;
+  const y = new Date().getFullYear();
+  if (spec.age > 540) return y - 2;
+  if (spec.age > 300) return y - 1;
+  return y;
+}
+
 function build(spec: SeedSpec, i: number): Automation {
   const created = iso(spec.age);
   const modified = iso(Math.max(1, Math.round(spec.age / (i % 3 === 0 ? 12 : 3))));
@@ -245,7 +275,7 @@ function build(spec: SeedSpec, i: number): Automation {
     updates: isProject ? buildUpdates(spec, i) : [],
     approvals: buildApprovals(spec, i),
     data: {
-      automationId: `AUT-${new Date().getFullYear() - (spec.age > 300 ? 1 : 0)}-${String(i + 1).padStart(4, "0")}`,
+      automationId: `AUT-${fiscalYear(spec)}-${String(i + 1).padStart(4, "0")}`,
       legacyAutomationCode: i % 4 === 3 ? "" : `${(61 + i).toString().padStart(3, "0")}${i % 5 === 0 ? "A" : ""}`,
       submittedBy: spec.ba,
       submissionDate: created.slice(0, 10),
@@ -298,7 +328,7 @@ function build(spec: SeedSpec, i: number): Automation {
       estPmoHours: 60 + i * 8,
       opportunityStatus: spec.oppStatus,
       opportunityComments: "",
-      year: `FY${new Date().getFullYear() - (spec.age > 300 ? 1 : 0)}`,
+      year: `FY${fiscalYear(spec)}`,
       requestType: spec.requestType ?? "New Automation",
       technology: spec.tech,
     },

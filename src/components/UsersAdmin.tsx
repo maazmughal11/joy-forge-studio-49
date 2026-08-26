@@ -1,17 +1,10 @@
 import { useState } from "react";
 import { KeyRound, Plus, ShieldCheck, UserCog } from "lucide-react";
 import { toast } from "sonner";
-import { actions, useAppData } from "@/lib/store";
-import {
-  ALL_PERMISSIONS,
-  PERMISSION_GROUPS,
-  ROLE_PERMISSIONS,
-  hashPin,
-  isValidPin,
-  newSalt,
-  suggestUsername,
-} from "@/lib/auth";
-import type { Role, UserAccount } from "@/lib/types";
+import { useAppData } from "@/data";
+import { authService } from "@/services/auth-service";
+import { ALL_PERMISSIONS, PERMISSION_GROUPS, ROLE_PERMISSIONS, isValidPin, suggestUsername } from "@/lib/auth";
+import type { Role, UserAccount } from "@/domain/models";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -69,7 +62,7 @@ export function UsersAdmin({ actor }: { actor: string }) {
                   <Switch
                     checked={a.active}
                     onCheckedChange={(v) =>
-                      actions.updateAccount(a.id, { active: v }, actor, v ? "User activated" : "User deactivated", a.username)
+                      authService.setActive(a.id, v, actor, a.username)
                     }
                   />
                 </td>
@@ -107,11 +100,12 @@ function AddUserDialog({ open, onClose, actor }: { open: boolean; onClose: () =>
     if (!first.trim() || !last.trim()) { toast.error("First and last name are required"); return; }
     if (!isValidPin(pin)) { toast.error("PIN must be exactly 4 digits"); return; }
     if (data.accounts.some((a) => a.username === username)) { toast.error("That username already exists"); return; }
-    const salt = newSalt();
-    actions.createAccount(
-      { firstName: first.trim(), lastName: last.trim(), username, pinHash: await hashPin(pin, salt), pinSalt: salt, role },
-      actor,
-    );
+    try {
+      await authService.createAccount({ firstName: first.trim(), lastName: last.trim(), username, pin, role }, actor);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Could not create the user");
+      return;
+    }
     toast.success(`${first} ${last} can now sign in as ${username}`);
     setFirst(""); setLast(""); setPin(""); setRole("Editor");
     onClose();
@@ -222,7 +216,7 @@ function EditUserDialog({ account, onClose, actor }: { account: UserAccount | nu
             <div className="flex gap-2">
               <Button
                 onClick={() => {
-                  actions.updateAccount(
+                  authService.updateAccount(
                     account.id,
                     { role, permissions: role === "Administrator" ? [...ALL_PERMISSIONS] : perms },
                     actor,
@@ -265,14 +259,7 @@ function ResetPinDialog({ account, onClose, actor }: { account: UserAccount | nu
             <Button
               onClick={async () => {
                 if (!isValidPin(pin)) { toast.error("PIN must be exactly 4 digits"); return; }
-                const salt = newSalt();
-                actions.updateAccount(
-                  account.id,
-                  { pinHash: await hashPin(pin, salt), pinSalt: salt },
-                  actor,
-                  "PIN reset",
-                  account.username,
-                );
+                await authService.resetPin(account.id, pin, actor);
                 toast.success("PIN reset");
                 setPin("");
                 onClose();

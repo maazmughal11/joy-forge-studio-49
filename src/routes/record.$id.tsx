@@ -7,7 +7,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { StageProgress } from "@/components/StageProgress";
 import { StatusBadge } from "@/components/StatusBadge";
 import { FieldInput } from "@/components/FieldInput";
-import { useAppData, useAutomation, actions } from "@/lib/store";
+import { useAppData, useAutomation, actions } from "@/data";
 import { SECTIONS, completeness, fieldsForStage, priorityFromScoring } from "@/lib/fields";
 import { moveBlockers, nameOf } from "@/lib/derive";
 import { Button } from "@/components/ui/button";
@@ -18,7 +18,7 @@ import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Area, CartesianGrid, ComposedChart, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import type { Automation, Scoring } from "@/lib/types";
+import type { Automation, Scoring } from "@/domain/models";
 
 export const Route = createFileRoute("/record/$id")({
   head: () => ({
