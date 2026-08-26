@@ -30,7 +30,7 @@ function resolveProvider(): StorageProviderId {
   const allowed: StorageProviderId[] = ["local", "electron-sqlite", "rest", "graph", "postgres"];
   if (fromEnv && (allowed as string[]).includes(fromEnv)) return fromEnv as StorageProviderId;
   // Auto-detect the Electron desktop bridge when it is present.
-  if (typeof window !== "undefined" && (window as { rpaDesktop?: unknown }).rpaDesktop) {
+  if (typeof window !== "undefined" && (window as { rpaDesktop?: { sqliteReady?: boolean } }).rpaDesktop?.sqliteReady) {
     return "electron-sqlite";
   }
   return DEFAULT_PROVIDER;

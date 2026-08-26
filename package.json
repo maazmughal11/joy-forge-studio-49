@@ -9,7 +9,10 @@
     "build:dev": "vite build --mode development",
     "preview": "vite preview",
     "lint": "eslint .",
-    "format": "prettier --write ."
+    "format": "prettier --write .",
+    "build:electron": "vite build --config vite.electron.config.ts",
+    "electron:dev": "concurrently -k \"vite --config vite.electron.config.ts\" \"wait-on tcp:5199 && electron electron/main.cjs\"",
+    "electron:build": "npm run build:electron && electron-builder --win nsis --config electron-builder.json"
   },
   "overrides": {
     "rolldown": "1.2.1"
@@ -92,5 +95,6 @@
     "vite": "8.1.5",
     "vitest": "^4.1.11",
     "wait-on": "^9.1.0"
-  }
+  },
+  "main": "electron/main.cjs"
 }
