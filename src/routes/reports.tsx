@@ -149,7 +149,14 @@ function Reports() {
   const byTechnology = group(records.map((r) => str(r, "technology")));
   const byProjectStatus = group(records.filter((r) => r.stage !== "idea").map((r) => str(r, "projectStatus")));
   const byOppStatus = group(ideas.map((r) => str(r, "opportunityStatus")));
-  const byRag = group(projects.map((a) => lastUpdate(a)?.rag ?? "No update"));
+  const byRag = useMemo(() => {
+    const map = new Map<string, number>();
+    projects.forEach((a) => {
+      const rag = lastUpdate(a)?.rag ?? "No update";
+      map.set(rag, (map.get(rag) ?? 0) + 1);
+    });
+    return RAG_ORDER.map((name) => ({ name, value: map.get(name) ?? 0 })).filter((d) => d.value > 0);
+  }, [projects]);
   const byForecast = ["Next 30 Days", "31-60 Days", "61-90 Days", "Beyond 90 Days", "Production Date Missing"].map((b) => ({
     name: b,
     value: projects.filter((p) => forecastBucket(p) === b).length,
