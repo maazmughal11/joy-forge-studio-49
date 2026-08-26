@@ -104,9 +104,9 @@ function AddUserDialog({ open, onClose, actor }: { open: boolean; onClose: () =>
   const username = suggestUsername(first, last);
 
   const submit = async () => {
-    if (!first.trim() || !last.trim()) return toast.error("First and last name are required");
-    if (!isValidPin(pin)) return toast.error("PIN must be exactly 4 digits");
-    if (data.accounts.some((a) => a.username === username)) return toast.error("That username already exists");
+    if (!first.trim() || !last.trim()) { toast.error("First and last name are required"); return; }
+    if (!isValidPin(pin)) { toast.error("PIN must be exactly 4 digits"); return; }
+    if (data.accounts.some((a) => a.username === username)) { toast.error("That username already exists"); return; }
     const salt = newSalt();
     actions.createAccount(
       { firstName: first.trim(), lastName: last.trim(), username, pinHash: await hashPin(pin, salt), pinSalt: salt, role },
@@ -264,7 +264,7 @@ function ResetPinDialog({ account, onClose, actor }: { account: UserAccount | nu
             />
             <Button
               onClick={async () => {
-                if (!isValidPin(pin)) return toast.error("PIN must be exactly 4 digits");
+                if (!isValidPin(pin)) { toast.error("PIN must be exactly 4 digits"); return; }
                 const salt = newSalt();
                 actions.updateAccount(
                   account.id,
