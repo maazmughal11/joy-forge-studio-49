@@ -278,3 +278,41 @@ function SettingsPage() {
     </AppShell>
   );
 }
+
+function OptionEditor({ listKey, values }: { listKey: string; values: string[] }) {
+  const [draft, setDraft] = useState("");
+  return (
+    <div className="card-surface p-4">
+      <h3 className="text-sm font-semibold">{LIST_LABELS[listKey] ?? listKey}</h3>
+      <div className="mt-3 flex flex-wrap gap-1.5">
+        {values.map((v) => (
+          <span key={v} className="inline-flex items-center gap-1 rounded-full border border-border bg-secondary px-2.5 py-1 text-xs">
+            {v}
+            <button
+              aria-label={`Remove ${v}`}
+              onClick={() => actions.setOptionList(listKey, values.filter((x) => x !== v))}
+              className="text-muted-foreground hover:text-destructive"
+            >
+              <X className="h-3 w-3" />
+            </button>
+          </span>
+        ))}
+      </div>
+      <form
+        className="mt-3 flex gap-2"
+        onSubmit={(e) => {
+          e.preventDefault();
+          const v = draft.trim();
+          if (!v || values.includes(v)) return;
+          actions.setOptionList(listKey, [...values, v]);
+          setDraft("");
+        }}
+      >
+        <Input value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="Add value…" className="h-8" />
+        <Button type="submit" size="sm" variant="secondary">
+          <Plus className="h-3.5 w-3.5" />
+        </Button>
+      </form>
+    </div>
+  );
+}

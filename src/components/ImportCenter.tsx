@@ -27,7 +27,7 @@ import {
   type PreparedRow,
 } from "@/lib/legacy-import";
 import { cn } from "@/lib/utils";
-import type { Stage } from "@/domain/models";
+import type { FieldValue, Stage } from "@/domain/models";
 
 type Step = "columns" | "values" | "preview" | "results";
 
@@ -173,7 +173,7 @@ export function ImportCenter({ user }: { user: string }) {
     }
     actions.createBackup(user, "Safety backup before import");
 
-    const created: { stage: Stage; data: Record<string, unknown> }[] = [];
+    const created: { stage: Stage; data: Record<string, FieldValue> }[] = [];
     const out: ResultRow[] = [];
     let updated = 0;
     let skipped = 0;
