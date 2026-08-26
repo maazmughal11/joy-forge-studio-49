@@ -123,15 +123,38 @@ function OptionEditor({ listKey, values }: { listKey: string; values: string[] }
 }
 
 function ImportCenter({ user }: { user: string }) {
+  const data = useAppData();
   const importRef = useRef<HTMLInputElement>(null);
   const [rows, setRows] = useState<string[][] | null>(null);
   const [mapping, setMapping] = useState<Record<number, string>>({});
   const [stage, setStage] = useState<Stage>("idea");
   const [source, setSource] = useState("Legacy Excel Tracker");
+  const [step, setStep] = useState<"columns" | "values">("columns");
+  // "<fieldKey>::<sourceValue>" -> app value
+  const [valueMap, setValueMap] = useState<Record<string, string>>({});
 
   const headers = rows?.[0] ?? [];
   const body = useMemo(() => rows?.slice(1) ?? [], [rows]);
   const mappedCount = Object.keys(mapping).length;
+
+  /** Source values in list-driven columns that don't match an existing app option. */
+  const valueGaps = useMemo(() => {
+    const out: { fieldKey: string; label: string; options: string[]; sourceValue: string; count: number }[] = [];
+    Object.entries(mapping).forEach(([idx, key]) => {
+      const field = FIELDS.find((f) => f.key === key);
+      if (!field || field.type !== "select") return;
+      const options = field.optionKey ? data.settings.options[field.optionKey] ?? [] : field.options ?? [];
+      if (!options.length) return;
+      const counts = new Map<string, number>();
+      body.forEach((r) => {
+        const raw = (r[Number(idx)] ?? "").trim();
+        if (!raw || options.some((o) => norm(o) === norm(raw))) return;
+        counts.set(raw, (counts.get(raw) ?? 0) + 1);
+      });
+      counts.forEach((count, sourceValue) => out.push({ fieldKey: key, label: field.label, options, sourceValue, count }));
+    });
+    return out;
+  }, [mapping, body, data.settings.options]);
 
   const nameIdx = Object.entries(mapping).find(([, k]) => k === "opportunityName")?.[0];
   const issues = body
@@ -146,14 +169,16 @@ function ImportCenter({ user }: { user: string }) {
     const payload: Partial<Automation>[] = body
       .filter((r) => r[Number(nameIdx)]?.trim())
       .map((r) => {
-        const data: Record<string, FieldValue> = {};
+        const record: Record<string, FieldValue> = {};
         Object.entries(mapping).forEach(([idx, key]) => {
           const raw = (r[Number(idx)] ?? "").trim();
           if (!raw) return;
           const field = FIELDS.find((f) => f.key === key);
-          data[key] = field?.type === "number" ? Number(raw.replace(/[$,]/g, "")) || 0 : raw;
+          const mapped = valueMap[`${key}::${raw}`];
+          const value = mapped && mapped !== "__keep__" ? mapped : raw;
+          record[key] = field?.type === "number" ? Number(value.replace(/[$,]/g, "")) || 0 : value;
         });
-        return { stage, data };
+        return { stage, data: record };
       });
     if (!payload.length) {
       toast.error("Nothing to import");
@@ -164,6 +189,8 @@ function ImportCenter({ user }: { user: string }) {
     toast.success(`${count} record(s) imported from ${source}`);
     setRows(null);
     setMapping({});
+    setValueMap({});
+    setStep("columns");
   };
 
   return (
@@ -221,6 +248,8 @@ function ImportCenter({ user }: { user: string }) {
             } else {
               setRows(parsed);
               setMapping(autoMap(parsed[0]!));
+              setValueMap({});
+              setStep("columns");
               toast.success(`${parsed.length - 1} row(s) loaded — review the mapping`);
             }
             e.target.value = "";
