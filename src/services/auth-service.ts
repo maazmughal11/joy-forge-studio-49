@@ -10,11 +10,15 @@
 
 import { repositories } from "@/data";
 import {
+  ALL_PERMISSIONS,
+  BUILTIN_ADMIN_PASSWORD,
+  BUILTIN_ADMIN_USERNAME,
   authSession,
   can,
   clearFailures,
   hashPin,
   hydrateSession,
+  isBuiltinAdmin,
   isValidPin,
   newSalt,
   registerFailure,
@@ -30,6 +34,8 @@ export type SignInResult =
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+const PROTECTED_ACCOUNT_ERROR = "The built-in administrator account cannot be modified.";
+
 export const authService = {
   /* ---------- session lifecycle ---------- */
   restoreSession: () => hydrateSession(),
@@ -42,6 +48,42 @@ export const authService = {
   hasAdministrator: async () => {
     const accounts = await repositories.users.getUsers();
     return accounts.some((a) => a.role === "Administrator" && a.active);
+  },
+
+  /**
+   * Guarantees the permanent built-in administrator exists with full
+   * permissions. Runs on every launch so the account can never be lost.
+   */
+  async ensureBuiltinAdmin(): Promise<UserAccount> {
+    const existing = await repositories.users.getUserByUsername(BUILTIN_ADMIN_USERNAME);
+    if (existing) {
+      const needsFix =
+        !existing.active ||
+        existing.role !== "Administrator" ||
+        existing.permissions.length !== ALL_PERMISSIONS.length;
+      if (needsFix) {
+        await repositories.users.updateUser(
+          existing.id,
+          { active: true, role: "Administrator", permissions: [...ALL_PERMISSIONS] },
+          "System",
+        );
+      }
+      return existing;
+    }
+    const pinSalt = newSalt();
+    const pinHash = await hashPin(BUILTIN_ADMIN_PASSWORD, pinSalt);
+    return repositories.users.createUser(
+      {
+        firstName: "System",
+        lastName: "Administrator",
+        username: BUILTIN_ADMIN_USERNAME,
+        pinHash,
+        pinSalt,
+        role: "Administrator",
+        permissions: [...ALL_PERMISSIONS],
+      },
+      "System",
+    );
   },
 
   async createAccount(
