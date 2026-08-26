@@ -2,7 +2,7 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import { AppShell } from "@/components/AppShell";
 import { useAuth } from "@/hooks/useAuth";
 import { StatusBadge } from "@/components/StatusBadge";
-import { useAppData } from "@/lib/store";
+import { useAppData } from "@/data";
 import {
   awaitingApproval,
   approachingProduction,
@@ -11,7 +11,7 @@ import {
   missingWeeklyUpdate,
   nameOf,
 } from "@/lib/derive";
-import type { Automation } from "@/lib/types";
+import type { Automation } from "@/domain/models";
 
 export const Route = createFileRoute("/my-work")({
   head: () => ({

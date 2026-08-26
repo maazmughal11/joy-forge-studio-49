@@ -13,7 +13,7 @@ import {
 import { AppShell } from "@/components/AppShell";
 import { useAuth } from "@/hooks/useAuth";
 import { StatusBadge } from "@/components/StatusBadge";
-import { useAppData, actions } from "@/lib/store";
+import { useAppData, actions } from "@/data";
 import {
   attentionItems,
   awaitingApproval,

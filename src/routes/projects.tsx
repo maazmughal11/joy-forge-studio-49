@@ -5,7 +5,7 @@ import { AppShell } from "@/components/AppShell";
 import { useAuth } from "@/hooks/useAuth";
 import { RecordTable, type Column } from "@/components/RecordTable";
 import { StatusBadge } from "@/components/StatusBadge";
-import { useAppData, actions } from "@/lib/store";
+import { useAppData, actions } from "@/data";
 import { approachingProduction, lastUpdate, missingWeeklyUpdate, nameOf, onHold } from "@/lib/derive";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -62,6 +62,14 @@ function Projects() {
     { key: "tech", label: "Technology", value: (a) => String(a.data['technology'] ?? "") },
     { key: "rag", label: "Health", badge: true, value: (a) => lastUpdate(a)?.rag ?? "" },
     { key: "saved", label: "Dollars Saved", value: (a) => Number(a.data['dollarsSaved'] ?? 0) },
+    {
+      key: "prodDate",
+      label: "Production Date",
+      value: (a) => {
+        const d = String(a.data['productionDate'] ?? "");
+        return d ? new Date(d).toLocaleDateString() : "";
+      },
+    },
     { key: "modified", label: "Modified", value: (a) => new Date(a.modifiedDate).toLocaleDateString() },
   ];
 

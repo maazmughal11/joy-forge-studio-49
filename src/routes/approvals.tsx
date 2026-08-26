@@ -4,7 +4,7 @@ import { Download, ExternalLink } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { useAuth } from "@/hooks/useAuth";
 import { StatusBadge } from "@/components/StatusBadge";
-import { useAppData } from "@/lib/store";
+import { useAppData } from "@/data";
 import { approvalRows, approvalTone, autoId, daysSince, nameOf, stageLabel, type ApprovalRow } from "@/lib/derive";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";

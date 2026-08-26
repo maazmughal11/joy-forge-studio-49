@@ -1,7 +1,8 @@
 import { useCallback } from "react";
-import { useAppData } from "@/lib/store";
-import { can, useSession, type Session } from "@/lib/auth";
-import type { UserAccount } from "@/lib/types";
+import { useAppData } from "@/data";
+import { useSession } from "@/lib/auth";
+import { authService, type Session } from "@/services/auth-service";
+import type { UserAccount } from "@/domain/models";
 
 export type AuthState = {
   session: Session;
@@ -16,7 +17,7 @@ export function useAuth(): AuthState {
   const data = useAppData();
   const session = useSession();
   const account = session ? data.accounts.find((a) => a.id === session.userId) ?? null : null;
-  const check = useCallback((permission: string) => can(account, permission), [account]);
+  const check = useCallback((permission: string) => authService.can(account, permission), [account]);
   return {
     session,
     account,

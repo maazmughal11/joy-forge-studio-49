@@ -17,7 +17,7 @@ import {
 } from "recharts";
 import { Download, Printer, FileSpreadsheet } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
-import { useAppData } from "@/lib/store";
+import { useAppData } from "@/data";
 import {
   autoId,
   cancelled,
@@ -41,7 +41,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { downloadCsv, downloadExcel, printReport } from "@/lib/export";
 import { cn } from "@/lib/utils";
-import type { Automation } from "@/lib/types";
+import type { Automation } from "@/domain/models";
 
 export const Route = createFileRoute("/reports")({
   head: () => ({

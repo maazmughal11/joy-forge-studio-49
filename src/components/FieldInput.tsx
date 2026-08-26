@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import type { FieldDef } from "@/lib/fields";
-import type { FieldValue } from "@/lib/types";
+import type { FieldValue } from "@/domain/models";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";

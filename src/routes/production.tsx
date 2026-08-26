@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { AppShell } from "@/components/AppShell";
 import { RecordTable, type Column } from "@/components/RecordTable";
-import { useAppData } from "@/lib/store";
+import { useAppData } from "@/data";
 import { nameOf } from "@/lib/derive";
 
 export const Route = createFileRoute("/production")({

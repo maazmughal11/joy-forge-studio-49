@@ -4,20 +4,10 @@ import logoAsset from "@/assets/smurfit-westrock-logo-light2.png.asset.json";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { actions, useAppData } from "@/lib/store";
-import {
-  authSession,
-  clearFailures,
-  hashPin,
-  isValidPin,
-  newSalt,
-  registerFailure,
-  suggestUsername,
-  useSession,
-  throttleDelay,
-  verifyPin,
-} from "@/lib/auth";
-import type { UserAccount } from "@/lib/types";
+import { actions, useAppData } from "@/data";
+import { authService } from "@/services/auth-service";
+import { isValidPin, suggestUsername, useSession } from "@/lib/auth";
+import type { UserAccount } from "@/domain/models";
 
 const initials = (name: string) =>
   name
@@ -69,20 +59,21 @@ function SetupScreen() {
     if (!isValidPin(pin)) return setError("The PIN must be exactly 4 digits.");
     if (pin !== confirm) return setError("The PINs do not match.");
     setBusy(true);
-    const salt = newSalt();
-    const pinHash = await hashPin(pin, salt);
-    const account = actions.createAccount(
-      {
-        firstName: first.trim(),
-        lastName: last.trim(),
-        username: effectiveUsername,
-        pinHash,
-        pinSalt: salt,
-        role: "Administrator",
-      },
-      `${first.trim()} ${last.trim()}`,
-    );
-    actions.logAudit(account.displayName, "Administrator account created (first run)", account.username);
+    try {
+      const account = await authService.createAccount(
+        {
+          firstName: first.trim(),
+          lastName: last.trim(),
+          username: effectiveUsername,
+          pin,
+          role: "Administrator",
+        },
+        `${first.trim()} ${last.trim()}`,
+      );
+      actions.logAudit(account.displayName, "Administrator account created (first run)", account.username);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Could not create the account.");
+    }
     setBusy(false);
   };
 
@@ -179,26 +170,16 @@ function SignInScreen({ lockedAccount }: { lockedAccount?: UserAccount | null })
     const uname = username.trim().toLowerCase();
     if (!uname || !pin) return setError("Enter your username and PIN.");
     setBusy(true);
-    const delay = throttleDelay(uname);
-    if (delay) await new Promise((r) => setTimeout(r, delay));
-    const account = data.accounts.find((a) => a.username === uname);
-    const ok = account && account.active ? await verifyPin(pin, account) : false;
-    if (!ok || !account) {
-      registerFailure(uname);
-      actions.logAudit(account?.displayName ?? uname, "Failed login", `username: ${uname}`);
+    const result = lockedAccount
+      ? uname === lockedAccount.username
+        ? await authService.unlock(lockedAccount.id, pin)
+        : ({ ok: false, error: "Incorrect username or PIN." } as const)
+      : await authService.signIn(uname, pin);
+    if (!result.ok) {
+      actions.logAudit(display?.displayName ?? uname, "Failed login", `username: ${uname}`);
       setPin("");
-      setBusy(false);
-      setError("Incorrect username or PIN.");
-      return;
+      setError(result.error);
     }
-    if (lockedAccount && account.id !== lockedAccount.id) {
-      setBusy(false);
-      setError("Incorrect username or PIN.");
-      return;
-    }
-    clearFailures(uname);
-    authSession.signIn(account.id);
-    actions.recordLogin(account.id);
     setBusy(false);
   };
 
@@ -256,7 +237,7 @@ function SignInScreen({ lockedAccount }: { lockedAccount?: UserAccount | null })
           {lockedAccount ? (
             <button
               type="button"
-              onClick={() => authSession.signOut()}
+              onClick={() => authService.signOut()}
               className="w-full text-center text-xs text-sidebar-foreground/60 hover:text-sidebar-foreground"
             >
               Sign in as a different user

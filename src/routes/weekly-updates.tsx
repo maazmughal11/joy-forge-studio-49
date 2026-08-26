@@ -4,7 +4,7 @@ import { Download } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { useAuth } from "@/hooks/useAuth";
 import { StatusBadge } from "@/components/StatusBadge";
-import { useAppData, actions } from "@/lib/store";
+import { useAppData, actions } from "@/data";
 import {
   autoId,
   cancelled,
@@ -28,7 +28,7 @@ import { downloadCsv } from "@/lib/export";
 import { Area, AreaChart, Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
-import type { Automation } from "@/lib/types";
+import type { Automation } from "@/domain/models";
 
 type Search = { view?: string };
 

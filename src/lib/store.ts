@@ -1,10 +1,17 @@
-import { useSyncExternalStore } from "react";
 import type { AdminLogEntry, AppData, Approval, Automation, FieldValue, HistoryEntry, Role, Stage, UserAccount } from "./types";
 import { seedData, DEFAULT_OPTIONS, DEFAULT_USERS } from "./seed";
 import { FIELDS } from "./fields";
 import { ROLE_PERMISSIONS } from "./auth";
+import { storageConfig } from "@/data/config";
 
-const STORAGE_KEY = "rpa-portfolio-data-v5";
+/**
+ * Local storage engine.
+ *
+ * INTERNAL to the data layer: this file is the persistence implementation
+ * behind `src/data/providers/local`. UI code must never import it directly —
+ * use `@/data` instead.
+ */
+const STORAGE_KEY = storageConfig.localStorageKey;
 
 let state: AppData = seedData();
 let hydrated = false;
@@ -66,19 +73,16 @@ export function hydrate() {
   emit();
 }
 
-function subscribe(l: () => void) {
+export function subscribe(l: () => void) {
   listeners.add(l);
   return () => listeners.delete(l);
 }
 
 const getSnapshot = () => state;
 
-export function useAppData(): AppData {
-  return useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
-}
-
-export function useAutomation(id: string): Automation | undefined {
-  return useAppData().automations.find((a) => a.id === id);
+/** Raw document snapshot. Internal to the data layer — UI must use `@/data`. */
+export function getState(): AppData {
+  return state;
 }
 
 function setState(next: AppData) {
