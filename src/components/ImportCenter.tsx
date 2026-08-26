@@ -200,7 +200,7 @@ export function ImportCenter({ user }: { user: string }) {
       out.push({ sourceRow: row.sourceRow, name: row.name, result: "New automation", automationId: "", warnings: warn, errors: "", duplicate: row.duplicate.kind });
     });
 
-    const count = created.length ? actions.importRecords(created as never, user, sheet.fileName) : 0;
+    const count = created.length ? actions.importRecords(created, user, sheet.fileName) : 0;
     actions.logAudit(user, `Imported ${sheet.fileName}`, `${count} new · ${updated} updated · ${skipped} skipped`);
     setResults(out);
     setStep("results");
