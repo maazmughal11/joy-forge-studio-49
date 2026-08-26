@@ -5,7 +5,7 @@ import { AppShell } from "@/components/AppShell";
 import { RecordTable, type Column } from "@/components/RecordTable";
 import { StatusBadge } from "@/components/StatusBadge";
 import { useAppData, actions } from "@/lib/store";
-import { lastUpdate, missingWeeklyUpdate, nameOf, onHold } from "@/lib/derive";
+import { approachingProduction, lastUpdate, missingWeeklyUpdate, nameOf, onHold } from "@/lib/derive";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
