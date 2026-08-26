@@ -148,7 +148,7 @@ function WeeklyUpdates() {
       subtitle="Portfolio-wide status reporting — a permanent historical log of every project update"
       actions={
         <>
-          {can("updates.create") ? (
+          {can("updates.submit") ? (
             <Button
               onClick={() => setFormFor(rows[0] ?? tracked[0] ?? null)}
               disabled={tracked.length === 0}
@@ -156,7 +156,7 @@ function WeeklyUpdates() {
               Submit Weekly Update
             </Button>
           ) : null}
-          <Button variant="outline" onClick={exportView} disabled={!can("export.basic")}>
+          <Button variant="outline" onClick={exportView} disabled={!can("export.view")}>
             <Download className="h-4 w-4" /> Export Current View
           </Button>
         </>
@@ -272,7 +272,7 @@ function WeeklyUpdates() {
                     )}
                   </td>
                   <td className="px-3 py-2.5">
-                    {can("updates.create") ? (
+                    {can("updates.submit") ? (
                       <Button size="sm" variant="secondary" onClick={() => setFormFor(a)}>
                         Update
                       </Button>

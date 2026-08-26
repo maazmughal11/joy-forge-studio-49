@@ -25,6 +25,7 @@ export const PERMISSION_GROUPS: { group: string; items: { key: string; label: st
     group: "Projects",
     items: [
       { key: "projects.view", label: "View Projects" },
+      { key: "projects.create", label: "Create Project" },
       { key: "projects.edit", label: "Edit Project" },
     ],
   },
@@ -86,6 +87,7 @@ const EDITOR: string[] = [
   "ideas.create",
   "ideas.edit",
   "ideas.move",
+  "projects.create",
   "projects.edit",
   "updates.submit",
   "updates.edit",
