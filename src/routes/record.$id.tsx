@@ -3,6 +3,7 @@ import { useState } from "react";
 import { ArrowRight, ExternalLink, Plus, Trash2, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
+import { useAuth } from "@/hooks/useAuth";
 import { StageProgress } from "@/components/StageProgress";
 import { StatusBadge } from "@/components/StatusBadge";
 import { FieldInput } from "@/components/FieldInput";
@@ -15,6 +16,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Area, CartesianGrid, ComposedChart, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import type { Automation, Scoring } from "@/lib/types";
 
@@ -42,7 +44,7 @@ function RecordPage() {
   const data = useAppData();
   const record = useAutomation(id);
   const navigate = useNavigate();
-  const user = data.settings.currentUser;
+  const { user, can, account } = useAuth();
 
   if (!record) {
     return (
@@ -300,6 +302,31 @@ function WeeklyUpdates({ record, user }: { record: Automation; user: string }) {
         </div>
       </section>
 
+      {record.updates.length > 1 ? (
+        <section className="card-surface p-4">
+          <h2 className="text-sm font-semibold">Health history</h2>
+          <p className="mb-3 text-xs text-muted-foreground">Reported completion and RAG health over time</p>
+          <div className="h-56">
+            <ResponsiveContainer width="100%" height="100%">
+              <ComposedChart data={record.updates.map((u) => ({
+                date: new Date(u.date).toLocaleDateString(undefined, { month: "short", day: "numeric" }),
+                percent: u.percentComplete,
+                rag: u.rag,
+                health: u.rag === "Green" ? 3 : u.rag === "Amber" ? 2 : 1,
+              }))}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+                <XAxis dataKey="date" tick={{ fontSize: 11 }} />
+                <YAxis yAxisId="p" domain={[0, 100]} tick={{ fontSize: 11 }} />
+                <YAxis yAxisId="h" orientation="right" domain={[0, 3]} ticks={[1, 2, 3]} tick={{ fontSize: 11 }} tickFormatter={(v: number) => (v === 3 ? "Green" : v === 2 ? "Amber" : "Red")} width={56} />
+                <Tooltip formatter={(v: number, n: string) => (n === "health" ? [v === 3 ? "Green" : v === 2 ? "Amber" : "Red", "Health"] : [`${v}%`, "% complete"])} />
+                <Area yAxisId="p" type="monotone" dataKey="percent" name="% complete" stroke="var(--chart-1)" fill="var(--chart-1)" fillOpacity={0.15} />
+                <Line yAxisId="h" type="stepAfter" dataKey="health" name="health" stroke="var(--chart-4)" strokeWidth={2} dot />
+              </ComposedChart>
+            </ResponsiveContainer>
+          </div>
+        </section>
+      ) : null}
+
       <section className="card-surface">
         <ul className="divide-y divide-border">
           {[...record.updates].reverse().map((u) => (
@@ -395,6 +422,31 @@ function Documents({ record, user, docTypes }: { record: Automation; user: strin
         </div>
       </section>
 
+      {record.updates.length > 1 ? (
+        <section className="card-surface p-4">
+          <h2 className="text-sm font-semibold">Health history</h2>
+          <p className="mb-3 text-xs text-muted-foreground">Reported completion and RAG health over time</p>
+          <div className="h-56">
+            <ResponsiveContainer width="100%" height="100%">
+              <ComposedChart data={record.updates.map((u) => ({
+                date: new Date(u.date).toLocaleDateString(undefined, { month: "short", day: "numeric" }),
+                percent: u.percentComplete,
+                rag: u.rag,
+                health: u.rag === "Green" ? 3 : u.rag === "Amber" ? 2 : 1,
+              }))}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+                <XAxis dataKey="date" tick={{ fontSize: 11 }} />
+                <YAxis yAxisId="p" domain={[0, 100]} tick={{ fontSize: 11 }} />
+                <YAxis yAxisId="h" orientation="right" domain={[0, 3]} ticks={[1, 2, 3]} tick={{ fontSize: 11 }} tickFormatter={(v: number) => (v === 3 ? "Green" : v === 2 ? "Amber" : "Red")} width={56} />
+                <Tooltip formatter={(v: number, n: string) => (n === "health" ? [v === 3 ? "Green" : v === 2 ? "Amber" : "Red", "Health"] : [`${v}%`, "% complete"])} />
+                <Area yAxisId="p" type="monotone" dataKey="percent" name="% complete" stroke="var(--chart-1)" fill="var(--chart-1)" fillOpacity={0.15} />
+                <Line yAxisId="h" type="stepAfter" dataKey="health" name="health" stroke="var(--chart-4)" strokeWidth={2} dot />
+              </ComposedChart>
+            </ResponsiveContainer>
+          </div>
+        </section>
+      ) : null}
+
       <section className="card-surface">
         <ul className="divide-y divide-border">
           {record.documents.map((d) => (
@@ -453,6 +505,31 @@ function Comments({ record, user }: { record: Automation; user: string }) {
           Post comment
         </Button>
       </section>
+      {record.updates.length > 1 ? (
+        <section className="card-surface p-4">
+          <h2 className="text-sm font-semibold">Health history</h2>
+          <p className="mb-3 text-xs text-muted-foreground">Reported completion and RAG health over time</p>
+          <div className="h-56">
+            <ResponsiveContainer width="100%" height="100%">
+              <ComposedChart data={record.updates.map((u) => ({
+                date: new Date(u.date).toLocaleDateString(undefined, { month: "short", day: "numeric" }),
+                percent: u.percentComplete,
+                rag: u.rag,
+                health: u.rag === "Green" ? 3 : u.rag === "Amber" ? 2 : 1,
+              }))}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+                <XAxis dataKey="date" tick={{ fontSize: 11 }} />
+                <YAxis yAxisId="p" domain={[0, 100]} tick={{ fontSize: 11 }} />
+                <YAxis yAxisId="h" orientation="right" domain={[0, 3]} ticks={[1, 2, 3]} tick={{ fontSize: 11 }} tickFormatter={(v: number) => (v === 3 ? "Green" : v === 2 ? "Amber" : "Red")} width={56} />
+                <Tooltip formatter={(v: number, n: string) => (n === "health" ? [v === 3 ? "Green" : v === 2 ? "Amber" : "Red", "Health"] : [`${v}%`, "% complete"])} />
+                <Area yAxisId="p" type="monotone" dataKey="percent" name="% complete" stroke="var(--chart-1)" fill="var(--chart-1)" fillOpacity={0.15} />
+                <Line yAxisId="h" type="stepAfter" dataKey="health" name="health" stroke="var(--chart-4)" strokeWidth={2} dot />
+              </ComposedChart>
+            </ResponsiveContainer>
+          </div>
+        </section>
+      ) : null}
+
       <section className="card-surface">
         <ul className="divide-y divide-border">
           {timeline.map((t) => (

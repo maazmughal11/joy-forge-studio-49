@@ -113,6 +113,24 @@ export type AdminLogEntry = {
   detail?: string;
 };
 
+export type Role = "Administrator" | "Editor" | "Viewer";
+
+export type UserAccount = {
+  id: string;
+  firstName: string;
+  lastName: string;
+  displayName: string;
+  username: string;
+  pinHash: string;
+  pinSalt: string;
+  role: Role;
+  permissions: string[];
+  active: boolean;
+  lastLogin?: string;
+  createdDate: string;
+  modifiedDate: string;
+};
+
 export type Settings = {
   currentUser: string;
   users: string[];
@@ -132,4 +150,6 @@ export type AppData = {
   automations: Automation[];
   backups: BackupMeta[];
   adminLog: AdminLogEntry[];
+  accounts: UserAccount[];
 };
+

@@ -1,7 +1,9 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useMemo } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { Plus } from "lucide-react";
+import type { Automation } from "@/lib/types";
 import { AppShell } from "@/components/AppShell";
+import { useAuth } from "@/hooks/useAuth";
 import { RecordTable, type Column } from "@/components/RecordTable";
 import { useAppData, actions } from "@/lib/store";
 import {
@@ -59,7 +61,7 @@ function Portfolio() {
   const data = useAppData();
   const navigate = useNavigate();
   const { view = "all" } = Route.useSearch();
-  const user = data.settings.currentUser;
+  const { user, can, account } = useAuth();
 
   const records = useMemo(() => {
     const all = data.automations;
@@ -89,6 +91,25 @@ function Portfolio() {
     }
   }, [data.automations, view]);
 
+  const [shown, setShown] = useState<Automation[]>(records);
+  const onRowsChange = useCallback((r: Automation[]) => setShown(r), []);
+
+  const kpis = useMemo(() => {
+    const savings = shown.reduce((sum, a) => sum + (Number(a.data['grossBenefits1yr']) || 0), 0);
+    return [
+      { label: "In View", value: String(shown.length), hint: "records matching filters" },
+      { label: "Discovery", value: String(shown.filter((a) => a.stage === "idea").length), hint: "ideas & assessment" },
+      { label: "Pipeline", value: String(shown.filter((a) => a.stage === "project").length), hint: "in delivery" },
+      { label: "Production", value: String(shown.filter((a) => a.stage === "production").length), hint: "live automations" },
+      { label: "On Hold", value: String(shown.filter(onHold).length), hint: "paused or blocked" },
+      {
+        label: "Annual Savings",
+        value: savings >= 1000 ? `$${(savings / 1000).toFixed(0)}k` : `$${savings.toFixed(0)}`,
+        hint: "expected gross, 12 months",
+      },
+    ];
+  }, [shown]);
+
   const columns: Column[] = [
     { key: "name", label: "Opportunity / Automation", value: nameOf },
     { key: "autoId", label: "Automation ID", mono: true, value: autoId },
@@ -116,9 +137,11 @@ function Portfolio() {
 
   return (
     <AppShell
+      requires={"portfolio.view"}
       title="Portfolio"
       subtitle="Master inventory of every automation across the Center of Excellence"
       actions={
+        can("ideas.create") ? (
         <Button
           onClick={() => {
             const rec = actions.createRecord("idea", user);
@@ -127,6 +150,7 @@ function Portfolio() {
         >
           <Plus className="h-4 w-4" /> New Idea
         </Button>
+        ) : null
       }
     >
       <div className="mb-4 flex flex-wrap gap-2">
@@ -146,8 +170,20 @@ function Portfolio() {
         ))}
       </div>
 
+      <div className="mb-4 grid gap-3 sm:grid-cols-3 xl:grid-cols-6">
+        {kpis.map((k) => (
+          <div key={k.label} className="card-surface px-4 py-3">
+            <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">{k.label}</p>
+            <p className="mt-1 text-2xl font-semibold tabular-nums">{k.value}</p>
+            <p className="text-[11px] text-muted-foreground">{k.hint}</p>
+          </div>
+        ))}
+      </div>
+
       <RecordTable
         records={records}
+        onRowsChange={onRowsChange}
+        canExport={can("export.full")}
         columns={columns}
         columnPicker
         exportName="portfolio"

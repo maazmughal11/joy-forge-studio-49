@@ -338,5 +338,7 @@ export function seedData(): AppData {
     automations: specs.map(build),
     backups: [],
     adminLog: [],
+    accounts: [],
   };
+
 }

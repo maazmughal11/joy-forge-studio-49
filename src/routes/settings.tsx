@@ -3,6 +3,8 @@ import { useMemo, useRef, useState } from "react";
 import { Download, Upload, RotateCcw, X, Plus, Database, Save, HardDriveDownload, FileSpreadsheet } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
+import { UsersAdmin } from "@/components/UsersAdmin";
+import { useAuth } from "@/hooks/useAuth";
 import { useAppData, actions } from "@/lib/store";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -121,15 +123,38 @@ function OptionEditor({ listKey, values }: { listKey: string; values: string[] }
 }
 
 function ImportCenter({ user }: { user: string }) {
+  const data = useAppData();
   const importRef = useRef<HTMLInputElement>(null);
   const [rows, setRows] = useState<string[][] | null>(null);
   const [mapping, setMapping] = useState<Record<number, string>>({});
   const [stage, setStage] = useState<Stage>("idea");
   const [source, setSource] = useState("Legacy Excel Tracker");
+  const [step, setStep] = useState<"columns" | "values">("columns");
+  // "<fieldKey>::<sourceValue>" -> app value
+  const [valueMap, setValueMap] = useState<Record<string, string>>({});
 
   const headers = rows?.[0] ?? [];
   const body = useMemo(() => rows?.slice(1) ?? [], [rows]);
   const mappedCount = Object.keys(mapping).length;
+
+  /** Source values in list-driven columns that don't match an existing app option. */
+  const valueGaps = useMemo(() => {
+    const out: { fieldKey: string; label: string; options: string[]; sourceValue: string; count: number }[] = [];
+    Object.entries(mapping).forEach(([idx, key]) => {
+      const field = FIELDS.find((f) => f.key === key);
+      if (!field || field.type !== "select") return;
+      const options = field.optionKey ? data.settings.options[field.optionKey] ?? [] : field.options ?? [];
+      if (!options.length) return;
+      const counts = new Map<string, number>();
+      body.forEach((r) => {
+        const raw = (r[Number(idx)] ?? "").trim();
+        if (!raw || options.some((o) => norm(o) === norm(raw))) return;
+        counts.set(raw, (counts.get(raw) ?? 0) + 1);
+      });
+      counts.forEach((count, sourceValue) => out.push({ fieldKey: key, label: field.label, options, sourceValue, count }));
+    });
+    return out;
+  }, [mapping, body, data.settings.options]);
 
   const nameIdx = Object.entries(mapping).find(([, k]) => k === "opportunityName")?.[0];
   const issues = body
@@ -144,14 +169,16 @@ function ImportCenter({ user }: { user: string }) {
     const payload: Partial<Automation>[] = body
       .filter((r) => r[Number(nameIdx)]?.trim())
       .map((r) => {
-        const data: Record<string, FieldValue> = {};
+        const record: Record<string, FieldValue> = {};
         Object.entries(mapping).forEach(([idx, key]) => {
           const raw = (r[Number(idx)] ?? "").trim();
           if (!raw) return;
           const field = FIELDS.find((f) => f.key === key);
-          data[key] = field?.type === "number" ? Number(raw.replace(/[$,]/g, "")) || 0 : raw;
+          const mapped = valueMap[`${key}::${raw}`];
+          const value = mapped && mapped !== "__keep__" ? mapped : raw;
+          record[key] = field?.type === "number" ? Number(value.replace(/[$,]/g, "")) || 0 : value;
         });
-        return { stage, data };
+        return { stage, data: record };
       });
     if (!payload.length) {
       toast.error("Nothing to import");
@@ -162,6 +189,8 @@ function ImportCenter({ user }: { user: string }) {
     toast.success(`${count} record(s) imported from ${source}`);
     setRows(null);
     setMapping({});
+    setValueMap({});
+    setStep("columns");
   };
 
   return (
@@ -219,6 +248,8 @@ function ImportCenter({ user }: { user: string }) {
             } else {
               setRows(parsed);
               setMapping(autoMap(parsed[0]!));
+              setValueMap({});
+              setStep("columns");
               toast.success(`${parsed.length - 1} row(s) loaded — review the mapping`);
             }
             e.target.value = "";
@@ -228,10 +259,26 @@ function ImportCenter({ user }: { user: string }) {
 
       {rows ? (
         <div className="mt-4 space-y-3">
+          <div className="flex flex-wrap gap-2">
+            {([["columns", "1. Column mapping"], ["values", "2. Value mapping"]] as const).map(([key, label]) => (
+              <button
+                key={key}
+                onClick={() => setStep(key)}
+                className={cn(
+                  "rounded-full border px-3 py-1.5 text-xs font-medium transition-colors",
+                  step === key ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card text-muted-foreground hover:text-foreground",
+                )}
+              >
+                {label}
+                {key === "values" && valueGaps.length ? ` (${valueGaps.length})` : ""}
+              </button>
+            ))}
+          </div>
           <p className="text-xs text-muted-foreground">
             {body.length} row(s) · {mappedCount} of {headers.length} columns mapped
             {issues.length ? ` · ${issues.length} row(s) will be skipped` : ""}
           </p>
+          {step === "columns" ? (
           <div className="max-h-72 overflow-auto rounded-md border border-border">
             <table className="w-full text-sm">
               <thead className="sticky top-0 bg-muted/80">
@@ -272,6 +319,58 @@ function ImportCenter({ user }: { user: string }) {
               </tbody>
             </table>
           </div>
+          ) : (
+            <div className="space-y-2">
+              <p className="text-xs text-muted-foreground">
+                Translate values used in your source file into the values this app uses (for example “NA” → “North America”).
+                Anything left unmapped is imported exactly as written.
+              </p>
+              {valueGaps.length ? (
+                <div className="max-h-72 overflow-auto rounded-md border border-border">
+                  <table className="w-full text-sm">
+                    <thead className="sticky top-0 bg-muted/80">
+                      <tr className="text-left text-muted-foreground">
+                        <th className="px-3 py-2 font-medium">Field</th>
+                        <th className="px-3 py-2 font-medium">Source value</th>
+                        <th className="px-3 py-2 font-medium">Rows</th>
+                        <th className="px-3 py-2 font-medium">Import as</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {valueGaps.map((g) => {
+                        const mapKey = `${g.fieldKey}::${g.sourceValue}`;
+                        return (
+                          <tr key={mapKey} className="border-t border-border/70">
+                            <td className="px-3 py-2">{g.label}</td>
+                            <td className="px-3 py-2 font-medium">{g.sourceValue}</td>
+                            <td className="px-3 py-2 tabular-nums text-muted-foreground">{g.count}</td>
+                            <td className="px-3 py-2">
+                              <Select
+                                value={valueMap[mapKey] ?? "__keep__"}
+                                onValueChange={(v) => setValueMap((m) => ({ ...m, [mapKey]: v }))}
+                              >
+                                <SelectTrigger className="h-8 w-64"><SelectValue /></SelectTrigger>
+                                <SelectContent className="max-h-72">
+                                  <SelectItem value="__keep__">— Keep “{g.sourceValue}” —</SelectItem>
+                                  {g.options.map((o) => (
+                                    <SelectItem key={o} value={o}>{o}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+              ) : (
+                <p className="rounded-md border border-border bg-muted/40 p-3 text-sm text-muted-foreground">
+                  Every value in your mapped list columns already matches an app value — nothing to translate.
+                </p>
+              )}
+            </div>
+          )}
           {issues.length ? (
             <div className="rounded-md border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive">
               {issues.slice(0, 5).join(" · ")}
@@ -279,8 +378,13 @@ function ImportCenter({ user }: { user: string }) {
             </div>
           ) : null}
           <div className="flex gap-2">
+            {step === "columns" ? (
+              <Button onClick={() => setStep("values")}>Next: value mapping</Button>
+            ) : (
+              <Button variant="secondary" onClick={() => setStep("columns")}>Back to columns</Button>
+            )}
             <Button onClick={runImport}>Import {body.length - issues.length} record(s)</Button>
-            <Button variant="ghost" onClick={() => { setRows(null); setMapping({}); }}>Cancel</Button>
+            <Button variant="ghost" onClick={() => { setRows(null); setMapping({}); setValueMap({}); setStep("columns"); }}>Cancel</Button>
           </div>
         </div>
       ) : null}
@@ -292,7 +396,7 @@ function SettingsPage() {
   const data = useAppData();
   const fileRef = useRef<HTMLInputElement>(null);
   const [path, setPath] = useState(data.settings.dataFolderPath);
-  const user = data.settings.currentUser;
+  const { user, account } = useAuth();
   const s = data.settings;
 
   const exportFile = () => {
@@ -307,7 +411,15 @@ function SettingsPage() {
   };
 
   return (
-    <AppShell title="Settings" subtitle="Workspace storage, migration, backups, team members and option lists">
+    <AppShell
+      title="Settings"
+      subtitle="Users and permissions, workspace storage, migration, backups and option lists"
+      requires="settings.manage"
+    >
+      <div className="mb-4">
+        <UsersAdmin actor={user} />
+      </div>
+
       <div className="grid gap-4 lg:grid-cols-2">
         <section className="card-surface p-4">
           <h2 className="flex items-center gap-2 text-sm font-semibold">
@@ -474,11 +586,12 @@ function SettingsPage() {
 
       <div className="mt-4 grid gap-4 lg:grid-cols-2">
         <section className="card-surface p-4">
-          <h2 className="text-sm font-semibold">Current profile</h2>
-          <p className="mt-1 text-xs text-muted-foreground">No login required — pick who you are so edits are attributed correctly.</p>
+          <h2 className="text-sm font-semibold">Signed-in account</h2>
+          <p className="mt-1 text-xs text-muted-foreground">All edits are attributed automatically to the signed-in user.</p>
           <p className="mt-4 text-lg font-medium">{user}</p>
-          <p className="text-xs text-muted-foreground">
-            {data.automations.length} records stored · {LIST_LABELS['users']}: {s.users.length} · Mode:{" "}
+          <p className="font-mono text-xs text-muted-foreground">{account?.username} · {account?.role}</p>
+          <p className="mt-2 text-xs text-muted-foreground">
+            {data.automations.length} records stored · {data.accounts.length} user account(s) · Mode:{" "}
             {s.storageMode === "shared" ? "Shared Workspace" : "Local Workspace"}
           </p>
         </section>

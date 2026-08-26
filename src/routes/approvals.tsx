@@ -2,6 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { Download, ExternalLink } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
+import { useAuth } from "@/hooks/useAuth";
 import { StatusBadge } from "@/components/StatusBadge";
 import { useAppData } from "@/lib/store";
 import { approvalRows, approvalTone, autoId, daysSince, nameOf, stageLabel, type ApprovalRow } from "@/lib/derive";
@@ -52,7 +53,7 @@ function Approvals() {
   const data = useAppData();
   const navigate = useNavigate();
   const { view = "pending" } = Route.useSearch();
-  const user = data.settings.currentUser;
+  const { user, can, account } = useAuth();
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<ApprovalRow | null>(null);
 
@@ -127,6 +128,7 @@ function Approvals() {
 
   return (
     <AppShell
+      requires={"approvals.view"}
       title="Approvals"
       subtitle="Centralized view of every approval captured against the automation portfolio"
       actions={

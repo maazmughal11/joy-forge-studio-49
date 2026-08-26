@@ -2,6 +2,7 @@ import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 import { Download } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
+import { useAuth } from "@/hooks/useAuth";
 import { StatusBadge } from "@/components/StatusBadge";
 import { useAppData, actions } from "@/lib/store";
 import {
@@ -9,6 +10,7 @@ import {
   cancelled,
   daysSince,
   daysSinceUpdate,
+  healthTrend,
   lastUpdate,
   missingWeeklyUpdate,
   nameOf,
@@ -23,6 +25,7 @@ import { Label } from "@/components/ui/label";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { downloadCsv } from "@/lib/export";
+import { Area, AreaChart, Bar, BarChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import type { Automation } from "@/lib/types";
@@ -61,7 +64,7 @@ function WeeklyUpdates() {
   const data = useAppData();
   const navigate = useNavigate();
   const { view = "week" } = Route.useSearch();
-  const user = data.settings.currentUser;
+  const { user, can, account } = useAuth();
   const [query, setQuery] = useState("");
   const [detail, setDetail] = useState<Automation | null>(null);
   const [formFor, setFormFor] = useState<Automation | null>(null);
@@ -103,12 +106,16 @@ function WeeklyUpdates() {
   const updatedThisWeek = activeProjects.filter((a) => daysSinceUpdate(a) <= 7).length;
   const compliance = activeProjects.length ? Math.round((updatedThisWeek / activeProjects.length) * 100) : 100;
 
+  const redAmber = tracked.filter((a) => ["Red", "Amber"].includes(lastUpdate(a)?.rag ?? "")).length;
+  const trend = useMemo(() => healthTrend(tracked, 12), [tracked]);
+
   const kpis = [
-    { label: "Active projects", value: String(activeProjects.length) },
-    { label: "Updated this week", value: String(updatedThisWeek) },
-    { label: "Missing update", value: String(activeProjects.length - updatedThisWeek) },
-    { label: "Update compliance", value: `${compliance}%` },
-  ];
+    { label: "Active projects", value: String(activeProjects.length), view: "all" },
+    { label: "Updated this week", value: String(updatedThisWeek), view: "week" },
+    { label: "Missing update", value: String(activeProjects.length - updatedThisWeek), view: "missing" },
+    { label: "Red / Amber", value: String(redAmber), view: "risk" },
+    { label: "Update compliance", value: `${compliance}%`, view: "all" },
+  ] as const;
 
   const exportView = () =>
     downloadCsv(
@@ -137,29 +144,72 @@ function WeeklyUpdates() {
 
   return (
     <AppShell
+      requires={"updates.view"}
       title="Weekly Updates"
       subtitle="Portfolio-wide status reporting — a permanent historical log of every project update"
       actions={
         <>
-          <Button
-            onClick={() => setFormFor(rows[0] ?? tracked[0] ?? null)}
-            disabled={tracked.length === 0}
-          >
-            Submit Weekly Update
-          </Button>
-          <Button variant="outline" onClick={exportView}>
+          {can("updates.submit") ? (
+            <Button
+              onClick={() => setFormFor(rows[0] ?? tracked[0] ?? null)}
+              disabled={tracked.length === 0}
+            >
+              Submit Weekly Update
+            </Button>
+          ) : null}
+          <Button variant="outline" onClick={exportView} disabled={!can("export.view")}>
             <Download className="h-4 w-4" /> Export Current View
           </Button>
         </>
       }
     >
-      <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <div className="mb-4 grid gap-3 sm:grid-cols-3 lg:grid-cols-5">
         {kpis.map((k) => (
-          <div key={k.label} className="card-surface p-4">
+          <button
+            key={k.label}
+            onClick={() => navigate({ to: "/weekly-updates", search: { view: k.view } })}
+            className="card-surface p-4 text-left transition-colors hover:border-ring"
+          >
             <p className="text-2xl font-semibold tabular-nums">{k.value}</p>
             <p className="text-xs text-muted-foreground">{k.label}</p>
-          </div>
+          </button>
         ))}
+      </div>
+
+      <div className="mb-4 grid gap-3 lg:grid-cols-2">
+        <div className="card-surface p-4">
+          <p className="text-sm font-medium">Project health trend</p>
+          <p className="mb-3 text-xs text-muted-foreground">Weekly RAG distribution across tracked projects</p>
+          <div className="h-56">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={trend}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+                <XAxis dataKey="week" tick={{ fontSize: 11 }} stroke="var(--muted-foreground)" />
+                <YAxis allowDecimals={false} tick={{ fontSize: 11 }} stroke="var(--muted-foreground)" />
+                <Tooltip contentStyle={{ fontSize: 12 }} />
+                <Legend wrapperStyle={{ fontSize: 11 }} />
+                <Bar dataKey="Green" stackId="r" fill="var(--chart-2)" />
+                <Bar dataKey="Amber" stackId="r" fill="var(--chart-4)" />
+                <Bar dataKey="Red" stackId="r" fill="var(--chart-5)" />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+        <div className="card-surface p-4">
+          <p className="text-sm font-medium">Average % complete</p>
+          <p className="mb-3 text-xs text-muted-foreground">Reported completion trend across tracked projects</p>
+          <div className="h-56">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={trend}>
+                <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" vertical={false} />
+                <XAxis dataKey="week" tick={{ fontSize: 11 }} stroke="var(--muted-foreground)" />
+                <YAxis domain={[0, 100]} tick={{ fontSize: 11 }} stroke="var(--muted-foreground)" />
+                <Tooltip contentStyle={{ fontSize: 12 }} />
+                <Area type="monotone" dataKey="avgComplete" name="Avg % complete" stroke="var(--chart-1)" fill="var(--chart-1)" fillOpacity={0.18} />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
       </div>
 
       <div className="mb-3 flex flex-wrap items-center gap-2">
@@ -223,9 +273,11 @@ function WeeklyUpdates() {
                     )}
                   </td>
                   <td className="px-3 py-2.5">
-                    <Button size="sm" variant="secondary" onClick={() => setFormFor(a)}>
-                      Update
-                    </Button>
+                    {can("updates.submit") ? (
+                      <Button size="sm" variant="secondary" onClick={() => setFormFor(a)}>
+                        Update
+                      </Button>
+                    ) : null}
                   </td>
                 </tr>
               );
