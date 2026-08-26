@@ -31,6 +31,7 @@ const VIEWS = [
   { key: "mine", label: "My Projects" },
   { key: "hold", label: "On Hold" },
   { key: "missing", label: "Missing Weekly Update" },
+  { key: "approaching", label: "Approaching Production" },
   { key: "recent", label: "Recently Updated" },
 ] as const;
 
@@ -49,6 +50,7 @@ function Projects() {
   if (view === "mine") records = records.filter((a) => [a.data['submittedBy'], a.data['businessAnalyst']].includes(user));
   if (view === "hold") records = records.filter(onHold);
   if (view === "missing") records = records.filter(missingWeeklyUpdate);
+  if (view === "approaching") records = records.filter(approachingProduction);
   if (view === "recent")
     records = records.filter((a) => Date.now() - new Date(a.modifiedDate).getTime() < 30 * 86400000);
 
