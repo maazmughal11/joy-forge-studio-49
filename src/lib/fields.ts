@@ -92,6 +92,10 @@ export const FIELDS: FieldDef[] = [
   { key: "dollarsSaved", label: "Dollars Saved ($)", type: "number", section: "Project Execution", stages: ["project"] },
   { key: "productionDate", label: "Production Date", type: "date", section: "Project Execution", stages: ["project"] },
   { key: "costChargedBack", label: "Cost Charged Back to Business ($)", type: "number", section: "Project Execution", stages: ["project"] },
+  { key: "approval", label: "Approval", type: "text", section: "Project Execution", stages: ["project"], optional: true },
+  { key: "moveToProject", label: "Move to Project", type: "text", section: "Project Execution", stages: ["project"], optional: true },
+  { key: "businessCaseStatus", label: "Business Case Status (legacy)", type: "text", section: "Project Execution", stages: ["project"], optional: true },
+
 
   // Portfolio Info
   { key: "opportunityStatus", label: "Opportunity Status", type: "select", optionKey: "opportunityStatuses", section: "Portfolio Info" },
@@ -101,6 +105,10 @@ export const FIELDS: FieldDef[] = [
   { key: "technology", label: "Technology", type: "select", optionKey: "technologies", section: "Portfolio Info" },
   { key: "legacyAutomationCode", label: "Legacy Automation Code", type: "text", section: "Portfolio Info", optional: true },
   { key: "migrationSource", label: "Migration Source", type: "text", section: "Portfolio Info", optional: true },
+  { key: "lifecycleCategory", label: "Lifecycle Category", type: "text", section: "Portfolio Info", optional: true },
+  { key: "legacyModifiedBy", label: "Modified By (source)", type: "text", section: "Portfolio Info", optional: true },
+  { key: "legacyModifiedDate", label: "Modified Date (source)", type: "date", section: "Portfolio Info", optional: true },
+
 ];
 
 /** Fields governance cares about for the Data Completeness report. */

@@ -1,9 +1,10 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useRef, useState } from "react";
-import { Download, Upload, RotateCcw, X, Plus, Database, Save, HardDriveDownload, FileSpreadsheet } from "lucide-react";
+import { Download, Upload, RotateCcw, X, Plus, Database, Save, HardDriveDownload } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
 import { UsersAdmin } from "@/components/UsersAdmin";
+import { ImportCenter } from "@/components/ImportCenter";
 import { useAuth } from "@/hooks/useAuth";
 import { useAppData, actions } from "@/data";
 import { Button } from "@/components/ui/button";
@@ -11,10 +12,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { FIELDS } from "@/lib/fields";
-import { downloadCsv } from "@/lib/export";
 import { cn } from "@/lib/utils";
-import type { Automation, FieldValue, Stage } from "@/domain/models";
+
 
 export const Route = createFileRoute("/settings")({
   head: () => ({
@@ -48,349 +47,6 @@ const LIST_LABELS: Record<string, string> = {
   documentTypes: "Document Types",
 };
 
-/* ---------------- CSV parsing ---------------- */
-
-function parseDelimited(text: string) {
-  const rows: string[][] = [];
-  let row: string[] = [];
-  let cell = "";
-  let quoted = false;
-  const delim = text.split("\n")[0]!.includes("\t") ? "\t" : ",";
-  for (let i = 0; i < text.length; i++) {
-    const ch = text[i]!;
-    if (quoted) {
-      if (ch === '"' && text[i + 1] === '"') { cell += '"'; i++; }
-      else if (ch === '"') quoted = false;
-      else cell += ch;
-    } else if (ch === '"') quoted = true;
-    else if (ch === delim) { row.push(cell); cell = ""; }
-    else if (ch === "\n") { row.push(cell); rows.push(row); row = []; cell = ""; }
-    else if (ch !== "\r") cell += ch;
-  }
-  if (cell || row.length) { row.push(cell); rows.push(row); }
-  return rows.filter((r) => r.some((c) => c.trim() !== ""));
-}
-
-const norm = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, "");
-
-function autoMap(headers: string[]) {
-  const map: Record<number, string> = {};
-  headers.forEach((h, i) => {
-    const field = FIELDS.find((f) => norm(f.label) === norm(h) || norm(f.key) === norm(h));
-    if (field) map[i] = field.key;
-  });
-  return map;
-}
-
-/* ---------------- Components ---------------- */
-
-function OptionEditor({ listKey, values }: { listKey: string; values: string[] }) {
-  const [draft, setDraft] = useState("");
-  return (
-    <div className="card-surface p-4">
-      <h3 className="text-sm font-semibold">{LIST_LABELS[listKey] ?? listKey}</h3>
-      <div className="mt-3 flex flex-wrap gap-1.5">
-        {values.map((v) => (
-          <span key={v} className="inline-flex items-center gap-1 rounded-full border border-border bg-secondary px-2.5 py-1 text-xs">
-            {v}
-            <button
-              aria-label={`Remove ${v}`}
-              onClick={() => actions.setOptionList(listKey, values.filter((x) => x !== v))}
-              className="text-muted-foreground hover:text-destructive"
-            >
-              <X className="h-3 w-3" />
-            </button>
-          </span>
-        ))}
-      </div>
-      <form
-        className="mt-3 flex gap-2"
-        onSubmit={(e) => {
-          e.preventDefault();
-          const v = draft.trim();
-          if (!v || values.includes(v)) return;
-          actions.setOptionList(listKey, [...values, v]);
-          setDraft("");
-        }}
-      >
-        <Input value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="Add value…" className="h-8" />
-        <Button type="submit" size="sm" variant="secondary">
-          <Plus className="h-3.5 w-3.5" />
-        </Button>
-      </form>
-    </div>
-  );
-}
-
-function ImportCenter({ user }: { user: string }) {
-  const data = useAppData();
-  const importRef = useRef<HTMLInputElement>(null);
-  const [rows, setRows] = useState<string[][] | null>(null);
-  const [mapping, setMapping] = useState<Record<number, string>>({});
-  const [stage, setStage] = useState<Stage>("idea");
-  const [source, setSource] = useState("Legacy Excel Tracker");
-  const [step, setStep] = useState<"columns" | "values">("columns");
-  // "<fieldKey>::<sourceValue>" -> app value
-  const [valueMap, setValueMap] = useState<Record<string, string>>({});
-
-  const headers = rows?.[0] ?? [];
-  const body = useMemo(() => rows?.slice(1) ?? [], [rows]);
-  const mappedCount = Object.keys(mapping).length;
-
-  /** Source values in list-driven columns that don't match an existing app option. */
-  const valueGaps = useMemo(() => {
-    const out: { fieldKey: string; label: string; options: string[]; sourceValue: string; count: number }[] = [];
-    Object.entries(mapping).forEach(([idx, key]) => {
-      const field = FIELDS.find((f) => f.key === key);
-      if (!field || field.type !== "select") return;
-      const options = field.optionKey ? data.settings.options[field.optionKey] ?? [] : field.options ?? [];
-      if (!options.length) return;
-      const counts = new Map<string, number>();
-      body.forEach((r) => {
-        const raw = (r[Number(idx)] ?? "").trim();
-        if (!raw || options.some((o) => norm(o) === norm(raw))) return;
-        counts.set(raw, (counts.get(raw) ?? 0) + 1);
-      });
-      counts.forEach((count, sourceValue) => out.push({ fieldKey: key, label: field.label, options, sourceValue, count }));
-    });
-    return out;
-  }, [mapping, body, data.settings.options]);
-
-  const nameIdx = Object.entries(mapping).find(([, k]) => k === "opportunityName")?.[0];
-  const issues = body
-    .map((r, i) => (nameIdx !== undefined && r[Number(nameIdx)]?.trim() ? null : `Row ${i + 2}: missing Opportunity Name`))
-    .filter(Boolean) as string[];
-
-  const runImport = () => {
-    if (nameIdx === undefined) {
-      toast.error("Map a column to Opportunity Name before importing");
-      return;
-    }
-    const payload: Partial<Automation>[] = body
-      .filter((r) => r[Number(nameIdx)]?.trim())
-      .map((r) => {
-        const record: Record<string, FieldValue> = {};
-        Object.entries(mapping).forEach(([idx, key]) => {
-          const raw = (r[Number(idx)] ?? "").trim();
-          if (!raw) return;
-          const field = FIELDS.find((f) => f.key === key);
-          const mapped = valueMap[`${key}::${raw}`];
-          const value = mapped && mapped !== "__keep__" ? mapped : raw;
-          record[key] = field?.type === "number" ? Number(value.replace(/[$,]/g, "")) || 0 : value;
-        });
-        return { stage, data: record };
-      });
-    if (!payload.length) {
-      toast.error("Nothing to import");
-      return;
-    }
-    actions.createBackup(user, "Safety backup before import");
-    const count = actions.importRecords(payload, user, source);
-    toast.success(`${count} record(s) imported from ${source}`);
-    setRows(null);
-    setMapping({});
-    setValueMap({});
-    setStep("columns");
-  };
-
-  return (
-    <section className="card-surface p-4">
-      <h2 className="flex items-center gap-2 text-sm font-semibold">
-        <FileSpreadsheet className="h-4 w-4 text-primary" /> Excel / CSV migration center
-      </h2>
-      <p className="mt-1 text-xs text-muted-foreground">
-        Import your legacy trackers. Save the Excel sheet as CSV, upload it, confirm the column mapping, then import. A safety
-        backup is taken automatically before any import.
-      </p>
-
-      <div className="mt-3 flex flex-wrap items-end gap-2">
-        <div>
-          <Label htmlFor="src">Migration source</Label>
-          <Input id="src" value={source} onChange={(e) => setSource(e.target.value)} className="mt-1 h-9 w-60" />
-        </div>
-        <div>
-          <Label>Import as</Label>
-          <Select value={stage} onValueChange={(v) => setStage(v as Stage)}>
-            <SelectTrigger className="mt-1 h-9 w-48"><SelectValue /></SelectTrigger>
-            <SelectContent>
-              <SelectItem value="idea">Idea (Discovery)</SelectItem>
-              <SelectItem value="project">Project (Pipeline)</SelectItem>
-              <SelectItem value="production">Production (Deployed)</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-        <Button variant="secondary" onClick={() => importRef.current?.click()}>
-          <Upload className="h-4 w-4" /> Choose CSV file
-        </Button>
-        <Button
-          variant="outline"
-          onClick={() =>
-            downloadCsv(
-              "automation-import-template",
-              FIELDS.filter((f) => f.section === "Submission Info" || f.key === "projectStatus").map((f) => f.label),
-              [],
-            )
-          }
-        >
-          <Download className="h-4 w-4" /> Download template
-        </Button>
-        <input
-          ref={importRef}
-          type="file"
-          accept=".csv,.tsv,.txt,text/csv"
-          className="hidden"
-          onChange={async (e) => {
-            const file = e.target.files?.[0];
-            if (!file) return;
-            const parsed = parseDelimited(await file.text());
-            if (parsed.length < 2) {
-              toast.error("That file has no data rows");
-            } else {
-              setRows(parsed);
-              setMapping(autoMap(parsed[0]!));
-              setValueMap({});
-              setStep("columns");
-              toast.success(`${parsed.length - 1} row(s) loaded — review the mapping`);
-            }
-            e.target.value = "";
-          }}
-        />
-      </div>
-
-      {rows ? (
-        <div className="mt-4 space-y-3">
-          <div className="flex flex-wrap gap-2">
-            {([["columns", "1. Column mapping"], ["values", "2. Value mapping"]] as const).map(([key, label]) => (
-              <button
-                key={key}
-                onClick={() => setStep(key)}
-                className={cn(
-                  "rounded-full border px-3 py-1.5 text-xs font-medium transition-colors",
-                  step === key ? "border-primary bg-primary text-primary-foreground" : "border-border bg-card text-muted-foreground hover:text-foreground",
-                )}
-              >
-                {label}
-                {key === "values" && valueGaps.length ? ` (${valueGaps.length})` : ""}
-              </button>
-            ))}
-          </div>
-          <p className="text-xs text-muted-foreground">
-            {body.length} row(s) · {mappedCount} of {headers.length} columns mapped
-            {issues.length ? ` · ${issues.length} row(s) will be skipped` : ""}
-          </p>
-          {step === "columns" ? (
-          <div className="max-h-72 overflow-auto rounded-md border border-border">
-            <table className="w-full text-sm">
-              <thead className="sticky top-0 bg-muted/80">
-                <tr className="text-left text-muted-foreground">
-                  <th className="px-3 py-2 font-medium">Source column</th>
-                  <th className="px-3 py-2 font-medium">Sample value</th>
-                  <th className="px-3 py-2 font-medium">Maps to field</th>
-                </tr>
-              </thead>
-              <tbody>
-                {headers.map((h, i) => (
-                  <tr key={`${h}-${i}`} className="border-t border-border/70">
-                    <td className="px-3 py-2 font-medium">{h || `Column ${i + 1}`}</td>
-                    <td className="max-w-56 truncate px-3 py-2 text-muted-foreground">{body[0]?.[i] ?? ""}</td>
-                    <td className="px-3 py-2">
-                      <Select
-                        value={mapping[i] ?? "__skip__"}
-                        onValueChange={(v) =>
-                          setMapping((m) => {
-                            const next = { ...m };
-                            if (v === "__skip__") delete next[i];
-                            else next[i] = v;
-                            return next;
-                          })
-                        }
-                      >
-                        <SelectTrigger className="h-8 w-64"><SelectValue /></SelectTrigger>
-                        <SelectContent className="max-h-72">
-                          <SelectItem value="__skip__">— Skip this column —</SelectItem>
-                          {FIELDS.map((f) => (
-                            <SelectItem key={f.key} value={f.key}>{f.label}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          ) : (
-            <div className="space-y-2">
-              <p className="text-xs text-muted-foreground">
-                Translate values used in your source file into the values this app uses (for example “NA” → “North America”).
-                Anything left unmapped is imported exactly as written.
-              </p>
-              {valueGaps.length ? (
-                <div className="max-h-72 overflow-auto rounded-md border border-border">
-                  <table className="w-full text-sm">
-                    <thead className="sticky top-0 bg-muted/80">
-                      <tr className="text-left text-muted-foreground">
-                        <th className="px-3 py-2 font-medium">Field</th>
-                        <th className="px-3 py-2 font-medium">Source value</th>
-                        <th className="px-3 py-2 font-medium">Rows</th>
-                        <th className="px-3 py-2 font-medium">Import as</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {valueGaps.map((g) => {
-                        const mapKey = `${g.fieldKey}::${g.sourceValue}`;
-                        return (
-                          <tr key={mapKey} className="border-t border-border/70">
-                            <td className="px-3 py-2">{g.label}</td>
-                            <td className="px-3 py-2 font-medium">{g.sourceValue}</td>
-                            <td className="px-3 py-2 tabular-nums text-muted-foreground">{g.count}</td>
-                            <td className="px-3 py-2">
-                              <Select
-                                value={valueMap[mapKey] ?? "__keep__"}
-                                onValueChange={(v) => setValueMap((m) => ({ ...m, [mapKey]: v }))}
-                              >
-                                <SelectTrigger className="h-8 w-64"><SelectValue /></SelectTrigger>
-                                <SelectContent className="max-h-72">
-                                  <SelectItem value="__keep__">— Keep “{g.sourceValue}” —</SelectItem>
-                                  {g.options.map((o) => (
-                                    <SelectItem key={o} value={o}>{o}</SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              ) : (
-                <p className="rounded-md border border-border bg-muted/40 p-3 text-sm text-muted-foreground">
-                  Every value in your mapped list columns already matches an app value — nothing to translate.
-                </p>
-              )}
-            </div>
-          )}
-          {issues.length ? (
-            <div className="rounded-md border border-destructive/30 bg-destructive/10 p-3 text-xs text-destructive">
-              {issues.slice(0, 5).join(" · ")}
-              {issues.length > 5 ? ` · +${issues.length - 5} more` : ""}
-            </div>
-          ) : null}
-          <div className="flex gap-2">
-            {step === "columns" ? (
-              <Button onClick={() => setStep("values")}>Next: value mapping</Button>
-            ) : (
-              <Button variant="secondary" onClick={() => setStep("columns")}>Back to columns</Button>
-            )}
-            <Button onClick={runImport}>Import {body.length - issues.length} record(s)</Button>
-            <Button variant="ghost" onClick={() => { setRows(null); setMapping({}); setValueMap({}); setStep("columns"); }}>Cancel</Button>
-          </div>
-        </div>
-      ) : null}
-    </section>
-  );
-}
 
 function SettingsPage() {
   const data = useAppData();
@@ -620,5 +276,43 @@ function SettingsPage() {
         ))}
       </div>
     </AppShell>
+  );
+}
+
+function OptionEditor({ listKey, values }: { listKey: string; values: string[] }) {
+  const [draft, setDraft] = useState("");
+  return (
+    <div className="card-surface p-4">
+      <h3 className="text-sm font-semibold">{LIST_LABELS[listKey] ?? listKey}</h3>
+      <div className="mt-3 flex flex-wrap gap-1.5">
+        {values.map((v) => (
+          <span key={v} className="inline-flex items-center gap-1 rounded-full border border-border bg-secondary px-2.5 py-1 text-xs">
+            {v}
+            <button
+              aria-label={`Remove ${v}`}
+              onClick={() => actions.setOptionList(listKey, values.filter((x) => x !== v))}
+              className="text-muted-foreground hover:text-destructive"
+            >
+              <X className="h-3 w-3" />
+            </button>
+          </span>
+        ))}
+      </div>
+      <form
+        className="mt-3 flex gap-2"
+        onSubmit={(e) => {
+          e.preventDefault();
+          const v = draft.trim();
+          if (!v || values.includes(v)) return;
+          actions.setOptionList(listKey, [...values, v]);
+          setDraft("");
+        }}
+      >
+        <Input value={draft} onChange={(e) => setDraft(e.target.value)} placeholder="Add value…" className="h-8" />
+        <Button type="submit" size="sm" variant="secondary">
+          <Plus className="h-3.5 w-3.5" />
+        </Button>
+      </form>
+    </div>
   );
 }
