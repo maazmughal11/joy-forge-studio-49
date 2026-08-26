@@ -14,7 +14,7 @@ import { cn } from "@/lib/utils";
 type Search = { view?: string };
 
 export const Route = createFileRoute("/approvals")({
-  validateSearch: (s: Record<string, unknown>): Search => ({ view: typeof s['view'] === "string" ? s['view'] : undefined }),
+  validateSearch: (s: Record<string, unknown>): Search => (typeof s['view'] === "string" ? { view: s['view'] } : {}),
   head: () => ({
     meta: [
       { title: "Approvals | Automation CoE Portfolio Tracker" },

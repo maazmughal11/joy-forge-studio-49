@@ -30,7 +30,7 @@ import type { Automation } from "@/lib/types";
 type Search = { view?: string };
 
 export const Route = createFileRoute("/weekly-updates")({
-  validateSearch: (s: Record<string, unknown>): Search => ({ view: typeof s['view'] === "string" ? s['view'] : undefined }),
+  validateSearch: (s: Record<string, unknown>): Search => (typeof s['view'] === "string" ? { view: s['view'] } : {}),
   head: () => ({
     meta: [
       { title: "Weekly Updates | Automation CoE Portfolio Tracker" },
