@@ -130,7 +130,7 @@ const DECISIONS = [
   "Decide on attended vs unattended run mode.",
 ];
 
-function buildUpdates(spec: Spec, i: number) {
+function buildUpdates(spec: SeedSpec, i: number) {
   const weeks = 3 + (i % 4); // 3-6 weekly updates per project
   const target = spec.stage === "production" ? 100 : 45 + ((i * 7) % 50);
   const out: Automation["updates"][number][] = [];
