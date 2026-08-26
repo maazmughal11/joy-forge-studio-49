@@ -101,7 +101,7 @@ function Home() {
             <h2 className="text-sm font-semibold">Items requiring my attention</h2>
           </header>
           <ul className="divide-y divide-border">
-            {attention.map(({ record, reasons, mine }) => (
+            {attention.map(({ record, reasons, ownerName }) => (
               <li key={record.id} className="flex flex-wrap items-center gap-3 px-4 py-3">
                 <div className="min-w-0 flex-1">
                   <Link to="/record/$id" params={{ id: record.id }} className="font-medium text-primary hover:underline">
@@ -109,7 +109,7 @@ function Home() {
                   </Link>
                   <p className="mt-1 text-xs text-muted-foreground">{reasons.join(" · ")}</p>
                 </div>
-                {mine ? <StatusBadge value="Mine" className="bg-primary/10 text-primary border-primary/25" /> : null}
+                {ownerName ? <StatusBadge value={String(ownerName)} className="bg-primary/10 text-primary border-primary/25" /> : null}
                 <StatusBadge value={String(record.data['projectStatus'] ?? record.data['opportunityStatus'] ?? "")} />
               </li>
             ))}

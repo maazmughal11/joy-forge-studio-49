@@ -41,6 +41,9 @@ export function attentionItems(records: Automation[], user: string) {
   return records
     .filter((a) => a.stage !== "archived")
     .map((a) => {
+      const ownerName = a.data['businessAnalyst'] === user
+        ? a.data['businessAnalyst']
+        : a.data['submittedBy'];
       const mine = [a.data['businessAnalyst'], a.data['submittedBy']].includes(user);
       const reasons: string[] = [];
       if (awaitingApproval(a)) reasons.push("Awaiting sponsor approval");
@@ -48,7 +51,7 @@ export function attentionItems(records: Automation[], user: string) {
       if (readyToMove(a)) reasons.push("Ready to move to Project Tracking");
       if (onHold(a)) reasons.push("On hold");
       if (completeness(a).percent < 60) reasons.push("Record incomplete");
-      return { record: a, reasons, mine };
+      return { record: a, reasons, ownerName, mine };
     })
     .filter((x) => x.reasons.length > 0)
     .sort((x, y) => Number(y.mine) - Number(x.mine) || y.reasons.length - x.reasons.length);
