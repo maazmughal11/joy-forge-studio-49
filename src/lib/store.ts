@@ -85,10 +85,30 @@ function persist() {
   persistTimer = setTimeout(writeNow, 250);
 }
 
+/** Approximate browser/desktop localStorage budget (5 MB). */
+const STORAGE_BUDGET_BYTES = 5 * 1024 * 1024;
+
 /** Storage diagnostics for the settings screen / troubleshooting. */
 export function getStorageHealth() {
-  return { error: storageError };
+  let usedBytes = 0;
+  if (typeof window !== "undefined") {
+    try {
+      usedBytes = (window.localStorage.getItem(STORAGE_KEY) ?? "").length * 2;
+    } catch {
+      /* ignore */
+    }
+  }
+  const percent = Math.min(100, Math.round((usedBytes / STORAGE_BUDGET_BYTES) * 100));
+  return {
+    error: storageError,
+    usedKb: Math.round(usedBytes / 1024),
+    budgetKb: Math.round(STORAGE_BUDGET_BYTES / 1024),
+    percent,
+    records: state.automations.length,
+    backups: (state.backups ?? []).length,
+  };
 }
+
 
 /** Force any batched write to disk immediately (used before export/backup). */
 export function flushPersist() {
