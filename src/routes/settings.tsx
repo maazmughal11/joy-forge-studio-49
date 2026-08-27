@@ -6,7 +6,7 @@ import { AppShell } from "@/components/AppShell";
 import { UsersAdmin } from "@/components/UsersAdmin";
 import { ImportCenter } from "@/components/ImportCenter";
 import { useAuth } from "@/hooks/useAuth";
-import { useAppData, actions } from "@/data";
+import { useAppData, actions, getStorageHealth } from "@/data";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -160,8 +160,42 @@ function SettingsPage() {
 
         <section className="card-surface p-4">
           <h2 className="flex items-center gap-2 text-sm font-semibold">
+            <Database className="h-4 w-4 text-primary" /> Storage health
+          </h2>
+          <div className="mt-3 space-y-2 text-sm">
+            <div className="flex items-center justify-between">
+              <span className="text-muted-foreground">Workspace size</span>
+              <span className="tabular-nums">
+                {health.usedKb.toLocaleString()} KB of {health.budgetKb.toLocaleString()} KB ({health.percent}%)
+              </span>
+            </div>
+            <div className="h-2 overflow-hidden rounded-full bg-muted">
+              <div
+                className={cn("h-full rounded-full", health.percent > 85 ? "bg-destructive" : "bg-primary")}
+                style={{ width: `${Math.max(2, health.percent)}%` }}
+              />
+            </div>
+            <div className="flex items-center justify-between text-xs text-muted-foreground">
+              <span>{health.records.toLocaleString()} records</span>
+              <span>{health.backups} restore points stored</span>
+            </div>
+            {health.error ? (
+              <p className="rounded-md border border-destructive/40 bg-destructive/10 p-2 text-xs text-destructive">
+                {health.error}
+              </p>
+            ) : health.percent > 85 ? (
+              <p className="rounded-md border border-amber-500/40 bg-amber-500/10 p-2 text-xs text-amber-700 dark:text-amber-400">
+                Storage is filling up. Export a JSON backup and reduce stored restore points to stay comfortable.
+              </p>
+            ) : null}
+          </div>
+        </section>
+
+        <section className="card-surface p-4">
+          <h2 className="flex items-center gap-2 text-sm font-semibold">
             <HardDriveDownload className="h-4 w-4 text-primary" /> Backup &amp; restore
           </h2>
+
           <div className="mt-3 flex items-center justify-between rounded-md border border-border p-3">
             <div>
               <p className="text-sm font-medium">Automatic backups</p>
