@@ -11,7 +11,8 @@
       "from": "dist-electron/renderer",
       "to": "renderer"
     },
-    "package.json"
+    "package.json",
+    "!node_modules/**/*"
   ],
   "extraMetadata": {
     "main": "electron/main.cjs"
@@ -35,5 +36,6 @@
     "createStartMenuShortcut": true,
     "shortcutName": "Automation CoE Portfolio Tracker"
   },
-  "publish": null
+  "publish": null,
+  "asar": true
 }
