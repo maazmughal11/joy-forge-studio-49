@@ -1,4 +1,4 @@
-import type { AdminLogEntry, AppData, Approval, Automation, FieldValue, HistoryEntry, Role, Stage, UserAccount } from "./types";
+import type { AdminLogEntry, AppData, Approval, Automation, FieldValue, HistoryEntry, Message, Role, Stage, UserAccount } from "./types";
 import { seedData, DEFAULT_OPTIONS, DEFAULT_USERS } from "./seed";
 import { FIELDS } from "./fields";
 import { ROLE_PERMISSIONS } from "./auth";
@@ -38,6 +38,7 @@ function normalize(parsed: AppData): AppData {
     backups: parsed.backups ?? [],
     adminLog: parsed.adminLog ?? [],
     accounts: parsed.accounts ?? [],
+    messages: parsed.messages ?? [],
     settings: {
       ...base.settings,
       ...parsed.settings,
@@ -435,6 +436,47 @@ export const actions = {
       adminLog: auditAction ? [adminEntry(actor, auditAction, detail), ...state.adminLog] : state.adminLog,
     });
   },
+  // ---------- Direct messages ----------
+  sendMessage(input: { from: string; to: string; subject: string; body: string; recordId?: string; recordLabel?: string }): Message {
+    const message: Message = {
+      id: uid("msg"),
+      from: input.from,
+      to: input.to,
+      subject: input.subject,
+      body: input.body,
+      ...(input.recordId ? { recordId: input.recordId } : {}),
+      ...(input.recordLabel ? { recordLabel: input.recordLabel } : {}),
+      sentAt: new Date().toISOString(),
+    };
+    setState({
+      ...state,
+      messages: [message, ...(state.messages ?? [])],
+      adminLog: [adminEntry(input.from, "Message sent", `To ${input.to}: ${input.subject}`), ...state.adminLog],
+    });
+    return message;
+  },
+  markMessageRead(id: string, read = true) {
+    setState({
+      ...state,
+      messages: (state.messages ?? []).map((m) =>
+        m.id === id ? { ...m, ...(read ? { readAt: m.readAt ?? new Date().toISOString() } : { readAt: undefined }) } : m,
+      ),
+    });
+  },
+  resolveMessage(id: string, resolved = true) {
+    setState({
+      ...state,
+      messages: (state.messages ?? []).map((m) =>
+        m.id === id
+          ? { ...m, readAt: m.readAt ?? new Date().toISOString(), ...(resolved ? { resolvedAt: new Date().toISOString() } : { resolvedAt: undefined }) }
+          : m,
+      ),
+    });
+  },
+  deleteMessage(id: string) {
+    setState({ ...state, messages: (state.messages ?? []).filter((m) => m.id !== id) });
+  },
+
   recordLogin(id: string) {
     const acct = state.accounts.find((a) => a.id === id);
     setState({

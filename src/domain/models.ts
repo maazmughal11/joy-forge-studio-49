@@ -17,6 +17,7 @@ export type {
   DocRecord,
   FieldValue,
   HistoryEntry,
+  Message,
   OptionLists,
   Role,
   Scoring,

@@ -131,6 +131,20 @@ export type UserAccount = {
   modifiedDate: string;
 };
 
+export type Message = {
+  id: string;
+  from: string;
+  to: string;
+  subject: string;
+  body: string;
+  /** Optional reference to an automation record. */
+  recordId?: string;
+  recordLabel?: string;
+  sentAt: string;
+  readAt?: string;
+  resolvedAt?: string;
+};
+
 export type Settings = {
   currentUser: string;
   users: string[];
@@ -151,5 +165,6 @@ export type AppData = {
   backups: BackupMeta[];
   adminLog: AdminLogEntry[];
   accounts: UserAccount[];
+  messages: Message[];
 };
 
