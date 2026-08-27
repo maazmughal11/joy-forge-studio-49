@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApprovalsRouteImport } from './routes/approvals'
 import { Route as IdeasRouteImport } from './routes/ideas'
+import { Route as MessagesRouteImport } from './routes/messages'
 import { Route as MyWorkRouteImport } from './routes/my-work'
 import { Route as PortfolioRouteImport } from './routes/portfolio'
 import { Route as ProductionRouteImport } from './routes/production'
@@ -34,6 +35,11 @@ const ApprovalsRoute = ApprovalsRouteImport.update({
 const IdeasRoute = IdeasRouteImport.update({
   id: '/ideas',
   path: '/ideas',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MessagesRoute = MessagesRouteImport.update({
+  id: '/messages',
+  path: '/messages',
   getParentRoute: () => rootRouteImport,
 } as any)
 const MyWorkRoute = MyWorkRouteImport.update({
@@ -81,6 +87,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/approvals': typeof ApprovalsRoute
   '/ideas': typeof IdeasRoute
+  '/messages': typeof MessagesRoute
   '/my-work': typeof MyWorkRoute
   '/portfolio': typeof PortfolioRoute
   '/production': typeof ProductionRoute
@@ -94,6 +101,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/approvals': typeof ApprovalsRoute
   '/ideas': typeof IdeasRoute
+  '/messages': typeof MessagesRoute
   '/my-work': typeof MyWorkRoute
   '/portfolio': typeof PortfolioRoute
   '/production': typeof ProductionRoute
@@ -108,6 +116,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/approvals': typeof ApprovalsRoute
   '/ideas': typeof IdeasRoute
+  '/messages': typeof MessagesRoute
   '/my-work': typeof MyWorkRoute
   '/portfolio': typeof PortfolioRoute
   '/production': typeof ProductionRoute
@@ -123,6 +132,7 @@ export interface FileRouteTypes {
     | '/'
     | '/approvals'
     | '/ideas'
+    | '/messages'
     | '/my-work'
     | '/portfolio'
     | '/production'
@@ -136,6 +146,7 @@ export interface FileRouteTypes {
     | '/'
     | '/approvals'
     | '/ideas'
+    | '/messages'
     | '/my-work'
     | '/portfolio'
     | '/production'
@@ -149,6 +160,7 @@ export interface FileRouteTypes {
     | '/'
     | '/approvals'
     | '/ideas'
+    | '/messages'
     | '/my-work'
     | '/portfolio'
     | '/production'
@@ -163,6 +175,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ApprovalsRoute: typeof ApprovalsRoute
   IdeasRoute: typeof IdeasRoute
+  MessagesRoute: typeof MessagesRoute
   MyWorkRoute: typeof MyWorkRoute
   PortfolioRoute: typeof PortfolioRoute
   ProductionRoute: typeof ProductionRoute
@@ -194,6 +207,13 @@ declare module '@tanstack/react-router' {
       path: '/ideas'
       fullPath: '/ideas'
       preLoaderRoute: typeof IdeasRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/messages': {
+      id: '/messages'
+      path: '/messages'
+      fullPath: '/messages'
+      preLoaderRoute: typeof MessagesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/my-work': {
@@ -259,6 +279,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ApprovalsRoute: ApprovalsRoute,
   IdeasRoute: IdeasRoute,
+  MessagesRoute: MessagesRoute,
   MyWorkRoute: MyWorkRoute,
   PortfolioRoute: PortfolioRoute,
   ProductionRoute: ProductionRoute,

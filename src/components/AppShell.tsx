@@ -17,6 +17,8 @@ import {
   LogOut,
   UserRound,
   ShieldAlert,
+  MessageSquare,
+  Send,
 } from "lucide-react";
 import logoAsset from "@/assets/smurfit-westrock-logo-light2.png.asset.json";
 import { useAppData, actions, initializeData } from "@/data";
@@ -29,6 +31,7 @@ import { AuthGate } from "@/components/LoginScreen";
 import { PERMISSION_LABELS } from "@/lib/auth";
 import { authService } from "@/services/auth-service";
 import { useAuth } from "@/hooks/useAuth";
+import { MessageComposer } from "@/components/MessageComposer";
 
 const NAV = [
   { to: "/", label: "Home", icon: LayoutDashboard, permission: null },
@@ -40,6 +43,7 @@ const NAV = [
   { to: "/weekly-updates", label: "Weekly Updates", icon: CalendarClock, permission: "updates.view" },
   { to: "/reports", label: "Reports", icon: BarChart3, permission: "reports.view" },
   { to: "/my-work", label: "My Work", icon: UserCheck, permission: null },
+  { to: "/messages", label: "Messages", icon: MessageSquare, permission: null },
   { to: "/settings", label: "Settings", icon: SettingsIcon, permission: "settings.manage" },
 ] as const;
 
@@ -67,6 +71,9 @@ function Shell({ title, subtitle, actions: pageActions, requires, children }: { 
   const [searchOpen, setSearchOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [profileDialog, setProfileDialog] = useState(false);
+  const [composeOpen, setComposeOpen] = useState(false);
+  const currentUserName = account?.displayName ?? data.settings.currentUser;
+  const unreadMessages = (data.messages ?? []).filter((m) => m.to === currentUserName && !m.readAt).length;
 
 
   useEffect(() => {
@@ -141,6 +148,21 @@ function Shell({ title, subtitle, actions: pageActions, requires, children }: { 
               <kbd className="ml-auto rounded border border-border px-1.5 text-[10px]">⌘K</kbd>
             </button>
             <div className="ml-auto flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={() => setComposeOpen(true)} title="Send a message">
+                <Send className="h-4 w-4" /> Message
+              </Button>
+              <Link
+                to="/messages"
+                title="Messages"
+                className="relative inline-flex h-9 w-9 items-center justify-center rounded-md border border-border bg-card text-muted-foreground transition-colors hover:border-ring hover:text-foreground"
+              >
+                <MessageSquare className="h-4 w-4" />
+                {unreadMessages > 0 ? (
+                  <span className="absolute -right-1.5 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold text-primary-foreground">
+                    {unreadMessages}
+                  </span>
+                ) : null}
+              </Link>
               {can("settings.manage") ? (
                 <Link
                   to="/settings"
@@ -219,6 +241,8 @@ function Shell({ title, subtitle, actions: pageActions, requires, children }: { 
           )}
         </main>
       </div>
+
+      <MessageComposer open={composeOpen} onOpenChange={setComposeOpen} />
 
       <CommandDialog open={searchOpen} onOpenChange={setSearchOpen}>
         <CommandInput placeholder="Search ID, legacy code, name, owner, SME, analyst, division, technology, PAS #…" />
