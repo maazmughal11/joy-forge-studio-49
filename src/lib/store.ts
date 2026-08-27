@@ -152,11 +152,18 @@ export function getState(): AppData {
   return state;
 }
 
+/** Hard cap on the admin log so long-running installs cannot grow unbounded. */
+const ADMIN_LOG_LIMIT = 2000;
+
 function setState(next: AppData) {
-  state = { ...next, settings: { ...next.settings, lastWriteAt: new Date().toISOString() } };
+  const adminLog = next.adminLog && next.adminLog.length > ADMIN_LOG_LIMIT
+    ? next.adminLog.slice(0, ADMIN_LOG_LIMIT)
+    : next.adminLog;
+  state = { ...next, adminLog, settings: { ...next.settings, lastWriteAt: new Date().toISOString() } };
   persist();
   emit();
 }
+
 
 const uid = (p: string) => `${p}-${Math.random().toString(36).slice(2, 10)}`;
 

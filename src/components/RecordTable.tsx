@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useDeferredValue, useEffect, useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { ArrowUpDown, Columns3, Download, FileSpreadsheet } from "lucide-react";
 import type { Automation } from "@/domain/models";
