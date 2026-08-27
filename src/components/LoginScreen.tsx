@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Lock, LogIn, ShieldCheck, UserPlus } from "lucide-react";
-import logoAsset from "@/assets/smurfit-westrock-logo-light2.png.asset.json";
+import logoUrl from "@/assets/smurfit-westrock-logo-light2.png";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -30,7 +30,7 @@ function Backdrop({ children }: { children: React.ReactNode }) {
 function Branding({ subtitle }: { subtitle: string }) {
   return (
     <div className="mb-8 text-center">
-      <img src={logoAsset.url} alt="Smurfit Westrock" className="mx-auto h-8 w-auto object-contain" />
+      <img src={logoUrl} alt="Smurfit Westrock" className="mx-auto h-8 w-auto object-contain" />
       <h1 className="mt-6 text-2xl font-semibold tracking-tight">Automation CoE</h1>
       <p className="text-sm text-sidebar-foreground/60">{subtitle}</p>
     </div>

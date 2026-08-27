@@ -20,7 +20,7 @@ import {
   MessageSquare,
   Send,
 } from "lucide-react";
-import logoAsset from "@/assets/smurfit-westrock-logo-light2.png.asset.json";
+import logoUrl from "@/assets/smurfit-westrock-logo-light2.png";
 import { useAppData, actions, initializeData } from "@/data";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -131,7 +131,7 @@ function Shell({ title, subtitle, actions: pageActions, requires, children }: { 
         </nav>
         <div className="border-t border-sidebar-border px-4 py-4">
           <div className="flex items-center justify-center py-1">
-            <img src={logoAsset.url} alt="Smurfit Westrock" className="h-7 w-auto object-contain" />
+            <img src={logoUrl} alt="Smurfit Westrock" className="h-7 w-auto object-contain" />
           </div>
         </div>
       </aside>
