@@ -65,10 +65,14 @@ export function RecordTable({
     [filterKeys, records],
   );
 
+  // Typing stays responsive on large portfolios: filtering runs against the
+  // deferred value so keystrokes are never blocked by a full re-sort.
+  const deferredQuery = useDeferredValue(query);
+
   const rows = useMemo(() => {
     let out = records;
-    if (query.trim()) {
-      const q = query.toLowerCase();
+    if (deferredQuery.trim()) {
+      const q = deferredQuery.toLowerCase();
       out = out.filter((a) => Object.values(a.data).some((v) => String(v ?? "").toLowerCase().includes(q)));
     }
     for (const f of filterKeys) {
@@ -83,11 +87,24 @@ export function RecordTable({
       if (typeof av === "number" && typeof bv === "number") return (av - bv) * sort.dir;
       return String(av).localeCompare(String(bv)) * sort.dir;
     });
-  }, [records, query, filters, sort, columns, filterKeys]);
+  }, [records, deferredQuery, filters, sort, columns, filterKeys]);
+
+  // Render in pages so the DOM never holds thousands of rows at once.
+  const PAGE_SIZE = 100;
+  const [page, setPage] = useState(1);
+  const pageCount = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
+  useEffect(() => {
+    setPage(1);
+  }, [deferredQuery, filters, sort, records]);
+  const pageRows = useMemo(
+    () => (rows.length > PAGE_SIZE ? rows.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE) : rows),
+    [rows, page],
+  );
 
   useEffect(() => {
     onRowsChange?.(rows);
   }, [rows, onRowsChange]);
+
 
   const exportRows = () => ({
     headers: [...visibleColumns.map((c) => c.label), "Data Completeness %"],
