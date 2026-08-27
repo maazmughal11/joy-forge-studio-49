@@ -61,9 +61,18 @@ export function MessageComposer({
   };
 
   const send = () => {
-    if (!to) return toast.error("Choose a recipient");
-    if (!subject.trim()) return toast.error("Add a subject");
-    if (!body.trim()) return toast.error("Add a message");
+    if (!to) {
+      toast.error("Choose a recipient");
+      return;
+    }
+    if (!subject.trim()) {
+      toast.error("Add a subject");
+      return;
+    }
+    if (!body.trim()) {
+      toast.error("Add a message");
+      return;
+    }
     actions.sendMessage({
       from: user,
       to,

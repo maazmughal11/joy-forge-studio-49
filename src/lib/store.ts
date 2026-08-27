@@ -458,19 +458,24 @@ export const actions = {
   markMessageRead(id: string, read = true) {
     setState({
       ...state,
-      messages: (state.messages ?? []).map((m) =>
-        m.id === id ? { ...m, ...(read ? { readAt: m.readAt ?? new Date().toISOString() } : { readAt: undefined }) } : m,
-      ),
+      messages: (state.messages ?? []).map((m) => {
+        if (m.id !== id) return m;
+        if (read) return { ...m, readAt: m.readAt ?? new Date().toISOString() };
+        const { readAt: _readAt, ...rest } = m;
+        return rest;
+      }),
     });
   },
   resolveMessage(id: string, resolved = true) {
     setState({
       ...state,
-      messages: (state.messages ?? []).map((m) =>
-        m.id === id
-          ? { ...m, readAt: m.readAt ?? new Date().toISOString(), ...(resolved ? { resolvedAt: new Date().toISOString() } : { resolvedAt: undefined }) }
-          : m,
-      ),
+      messages: (state.messages ?? []).map((m) => {
+        if (m.id !== id) return m;
+        const seen = { ...m, readAt: m.readAt ?? new Date().toISOString() };
+        if (resolved) return { ...seen, resolvedAt: new Date().toISOString() };
+        const { resolvedAt: _resolvedAt, ...rest } = seen;
+        return rest;
+      }),
     });
   },
   deleteMessage(id: string) {
