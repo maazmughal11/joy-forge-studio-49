@@ -21,14 +21,80 @@ function emit() {
   listeners.forEach((l) => l());
 }
 
-function persist() {
+/**
+ * Writes are batched: UI mutations stay instant even with tens of thousands of
+ * records, and the (potentially large) JSON document is serialized at most once
+ * per animation frame instead of once per keystroke. Any pending write is
+ * flushed synchronously before the window/desktop app closes.
+ */
+let persistTimer: ReturnType<typeof setTimeout> | null = null;
+let listenersBound = false;
+
+/** Last known storage failure, surfaced through `getStorageHealth()`. */
+let storageError: string | null = null;
+
+function writeNow() {
   if (typeof window === "undefined") return;
+  if (persistTimer) {
+    clearTimeout(persistTimer);
+    persistTimer = null;
+  }
   try {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    storageError = null;
   } catch {
-    /* storage unavailable */
+    // Almost always a quota overflow. Backups are the largest, most
+    // reproducible payload, so shed the oldest ones and retry before giving up.
+    try {
+      let backups = state.backups ?? [];
+      while (backups.length > 0) {
+        backups = backups.slice(0, backups.length - 1);
+        state = { ...state, backups };
+        try {
+          window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+          storageError = "Storage was nearly full — the oldest backups were removed to save your latest changes.";
+          emit();
+          return;
+        } catch {
+          /* keep shedding */
+        }
+      }
+      storageError = "Storage is full. Export a JSON backup and remove old records to continue saving changes.";
+      emit();
+    } catch {
+      storageError = "Storage is unavailable in this environment.";
+    }
   }
 }
+
+function bindFlushListeners() {
+  if (listenersBound || typeof window === "undefined") return;
+  listenersBound = true;
+  const flush = () => writeNow();
+  window.addEventListener("beforeunload", flush);
+  window.addEventListener("pagehide", flush);
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden") flush();
+  });
+}
+
+function persist() {
+  if (typeof window === "undefined") return;
+  bindFlushListeners();
+  if (persistTimer) clearTimeout(persistTimer);
+  persistTimer = setTimeout(writeNow, 250);
+}
+
+/** Storage diagnostics for the settings screen / troubleshooting. */
+export function getStorageHealth() {
+  return { error: storageError };
+}
+
+/** Force any batched write to disk immediately (used before export/backup). */
+export function flushPersist() {
+  writeNow();
+}
+
 
 function normalize(parsed: AppData): AppData {
   const base = seedData();
