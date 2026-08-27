@@ -149,4 +149,8 @@ export const actions = {
 /** Back-compat alias used by the app shell during bootstrap. */
 export const hydrate = initializeData;
 
+/** Storage diagnostics (capacity, pending write failures) for the admin UI. */
+export { getStorageHealth, flushPersist } from "@/lib/store";
+
 export type { StorageProvider } from "./repositories";
+

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useDeferredValue, useEffect, useMemo, useState } from "react";
 import { Link } from "@tanstack/react-router";
 import { ArrowUpDown, Columns3, Download, FileSpreadsheet } from "lucide-react";
 import type { Automation } from "@/domain/models";
@@ -65,10 +65,14 @@ export function RecordTable({
     [filterKeys, records],
   );
 
+  // Typing stays responsive on large portfolios: filtering runs against the
+  // deferred value so keystrokes are never blocked by a full re-sort.
+  const deferredQuery = useDeferredValue(query);
+
   const rows = useMemo(() => {
     let out = records;
-    if (query.trim()) {
-      const q = query.toLowerCase();
+    if (deferredQuery.trim()) {
+      const q = deferredQuery.toLowerCase();
       out = out.filter((a) => Object.values(a.data).some((v) => String(v ?? "").toLowerCase().includes(q)));
     }
     for (const f of filterKeys) {
@@ -83,11 +87,24 @@ export function RecordTable({
       if (typeof av === "number" && typeof bv === "number") return (av - bv) * sort.dir;
       return String(av).localeCompare(String(bv)) * sort.dir;
     });
-  }, [records, query, filters, sort, columns, filterKeys]);
+  }, [records, deferredQuery, filters, sort, columns, filterKeys]);
+
+  // Render in pages so the DOM never holds thousands of rows at once.
+  const PAGE_SIZE = 100;
+  const [page, setPage] = useState(1);
+  const pageCount = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
+  useEffect(() => {
+    setPage(1);
+  }, [deferredQuery, filters, sort, records]);
+  const pageRows = useMemo(
+    () => (rows.length > PAGE_SIZE ? rows.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE) : rows),
+    [rows, page],
+  );
 
   useEffect(() => {
     onRowsChange?.(rows);
   }, [rows, onRowsChange]);
+
 
   const exportRows = () => ({
     headers: [...visibleColumns.map((c) => c.label), "Data Completeness %"],
@@ -197,7 +214,7 @@ export function RecordTable({
             </tr>
           </thead>
           <tbody>
-            {rows.map((a) => {
+            {pageRows.map((a) => {
               const c = completeness(a);
               return (
                 <tr key={a.id} className="border-b border-border/70 last:border-0 hover:bg-muted/40">
@@ -235,6 +252,28 @@ export function RecordTable({
           </tbody>
         </table>
       </div>
+      {pageCount > 1 ? (
+        <div className="flex items-center justify-end gap-3 text-sm text-muted-foreground">
+          <span>
+            Showing {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, rows.length)} of {rows.length}
+          </span>
+          <Button variant="outline" size="sm" disabled={page === 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>
+            Previous
+          </Button>
+          <span className="tabular-nums">
+            Page {page} / {pageCount}
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={page >= pageCount}
+            onClick={() => setPage((p) => Math.min(pageCount, p + 1))}
+          >
+            Next
+          </Button>
+        </div>
+      ) : null}
     </div>
+
   );
 }

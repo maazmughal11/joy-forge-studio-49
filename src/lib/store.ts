@@ -21,14 +21,100 @@ function emit() {
   listeners.forEach((l) => l());
 }
 
-function persist() {
+/**
+ * Writes are batched: UI mutations stay instant even with tens of thousands of
+ * records, and the (potentially large) JSON document is serialized at most once
+ * per animation frame instead of once per keystroke. Any pending write is
+ * flushed synchronously before the window/desktop app closes.
+ */
+let persistTimer: ReturnType<typeof setTimeout> | null = null;
+let listenersBound = false;
+
+/** Last known storage failure, surfaced through `getStorageHealth()`. */
+let storageError: string | null = null;
+
+function writeNow() {
   if (typeof window === "undefined") return;
+  if (persistTimer) {
+    clearTimeout(persistTimer);
+    persistTimer = null;
+  }
   try {
     window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+    storageError = null;
   } catch {
-    /* storage unavailable */
+    // Almost always a quota overflow. Backups are the largest, most
+    // reproducible payload, so shed the oldest ones and retry before giving up.
+    try {
+      let backups = state.backups ?? [];
+      while (backups.length > 0) {
+        backups = backups.slice(0, backups.length - 1);
+        state = { ...state, backups };
+        try {
+          window.localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+          storageError = "Storage was nearly full — the oldest backups were removed to save your latest changes.";
+          emit();
+          return;
+        } catch {
+          /* keep shedding */
+        }
+      }
+      storageError = "Storage is full. Export a JSON backup and remove old records to continue saving changes.";
+      emit();
+    } catch {
+      storageError = "Storage is unavailable in this environment.";
+    }
   }
 }
+
+function bindFlushListeners() {
+  if (listenersBound || typeof window === "undefined") return;
+  listenersBound = true;
+  const flush = () => writeNow();
+  window.addEventListener("beforeunload", flush);
+  window.addEventListener("pagehide", flush);
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "hidden") flush();
+  });
+}
+
+function persist() {
+  if (typeof window === "undefined") return;
+  bindFlushListeners();
+  if (persistTimer) clearTimeout(persistTimer);
+  persistTimer = setTimeout(writeNow, 250);
+}
+
+/** Approximate browser/desktop localStorage budget (5 MB). */
+const STORAGE_BUDGET_BYTES = 5 * 1024 * 1024;
+
+/** Storage diagnostics for the settings screen / troubleshooting. */
+export function getStorageHealth() {
+  let usedBytes = 0;
+  if (typeof window !== "undefined") {
+    try {
+      usedBytes = (window.localStorage.getItem(STORAGE_KEY) ?? "").length * 2;
+    } catch {
+      /* ignore */
+    }
+  }
+  const percent = Math.min(100, Math.round((usedBytes / STORAGE_BUDGET_BYTES) * 100));
+  return {
+    error: storageError,
+    usedKb: Math.round(usedBytes / 1024),
+    budgetKb: Math.round(STORAGE_BUDGET_BYTES / 1024),
+    percent,
+    records: state.automations.length,
+    backups: (state.backups ?? []).length,
+  };
+}
+
+
+/** Force any batched write to disk immediately (used before export/backup). */
+export function flushPersist() {
+  writeNow();
+}
+
 
 function normalize(parsed: AppData): AppData {
   const base = seedData();
@@ -86,11 +172,18 @@ export function getState(): AppData {
   return state;
 }
 
+/** Hard cap on the admin log so long-running installs cannot grow unbounded. */
+const ADMIN_LOG_LIMIT = 2000;
+
 function setState(next: AppData) {
-  state = { ...next, settings: { ...next.settings, lastWriteAt: new Date().toISOString() } };
+  const adminLog = next.adminLog && next.adminLog.length > ADMIN_LOG_LIMIT
+    ? next.adminLog.slice(0, ADMIN_LOG_LIMIT)
+    : next.adminLog;
+  state = { ...next, adminLog, settings: { ...next.settings, lastWriteAt: new Date().toISOString() } };
   persist();
   emit();
 }
+
 
 const uid = (p: string) => `${p}-${Math.random().toString(36).slice(2, 10)}`;
 
