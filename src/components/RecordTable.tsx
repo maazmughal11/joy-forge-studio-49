@@ -214,7 +214,7 @@ export function RecordTable({
             </tr>
           </thead>
           <tbody>
-            {rows.map((a) => {
+            {pageRows.map((a) => {
               const c = completeness(a);
               return (
                 <tr key={a.id} className="border-b border-border/70 last:border-0 hover:bg-muted/40">
@@ -252,6 +252,28 @@ export function RecordTable({
           </tbody>
         </table>
       </div>
+      {pageCount > 1 ? (
+        <div className="flex items-center justify-end gap-3 text-sm text-muted-foreground">
+          <span>
+            Showing {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, rows.length)} of {rows.length}
+          </span>
+          <Button variant="outline" size="sm" disabled={page === 1} onClick={() => setPage((p) => Math.max(1, p - 1))}>
+            Previous
+          </Button>
+          <span className="tabular-nums">
+            Page {page} / {pageCount}
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            disabled={page >= pageCount}
+            onClick={() => setPage((p) => Math.min(pageCount, p + 1))}
+          >
+            Next
+          </Button>
+        </div>
+      ) : null}
     </div>
+
   );
 }
