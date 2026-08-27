@@ -96,5 +96,10 @@
     "vitest": "^4.1.11",
     "wait-on": "^9.1.0"
   },
-  "main": "electron/main.cjs"
+  "main": "electron/main.cjs",
+  "version": "1.0.0",
+  "description": "Offline desktop portfolio tracker for RPA automation ideas, projects and deployed bots.",
+  "author": {
+    "name": "Automation Center of Excellence"
+  }
 }
