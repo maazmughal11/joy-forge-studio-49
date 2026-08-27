@@ -17,6 +17,7 @@ import type {
   CommentRecord,
   DocRecord,
   FieldValue,
+  Message,
   OptionLists,
   Role,
   Settings,
@@ -116,6 +117,23 @@ export interface UserRepository {
   recordLogin(id: string): MaybePromise<void>;
 }
 
+export type NewMessage = {
+  from: string;
+  to: string;
+  subject: string;
+  body: string;
+  recordId?: string;
+  recordLabel?: string;
+};
+
+export interface MessageRepository {
+  getMessages(): MaybePromise<Message[]>;
+  sendMessage(input: NewMessage): MaybePromise<Message>;
+  markMessageRead(id: string, read?: boolean): MaybePromise<void>;
+  resolveMessage(id: string, resolved?: boolean): MaybePromise<void>;
+  deleteMessage(id: string): MaybePromise<void>;
+}
+
 export interface ReferenceDataRepository {
   getOptionLists(): MaybePromise<OptionLists>;
   setOptionList(key: string, values: string[]): MaybePromise<void>;
@@ -151,6 +169,7 @@ export interface StorageProvider {
   documents: DocumentRepository;
   audit: AuditRepository;
   users: UserRepository;
+  messages: MessageRepository;
   referenceData: ReferenceDataRepository;
   backups: BackupRepository;
 

@@ -40,6 +40,7 @@ export const repositories = {
   documents: provider.documents,
   audit: provider.audit,
   users: provider.users,
+  messages: provider.messages,
   referenceData: provider.referenceData,
   backups: provider.backups,
 };
@@ -115,6 +116,13 @@ export const actions = {
   createAccount: (...args: Parameters<typeof r.users.createUser>) => r.users.createUser(...args),
   updateAccount: r.users.updateUser,
   recordLogin: r.users.recordLogin,
+
+  // Direct messages
+  getMessages: r.messages.getMessages,
+  sendMessage: r.messages.sendMessage,
+  markMessageRead: r.messages.markMessageRead,
+  resolveMessage: r.messages.resolveMessage,
+  deleteMessage: r.messages.deleteMessage,
 
   // Reference data & settings
   setOptionList: r.referenceData.setOptionList,
