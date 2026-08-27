@@ -369,6 +369,7 @@ export function seedData(): AppData {
     backups: [],
     adminLog: [],
     accounts: [],
+    messages: [],
   };
 
 }
