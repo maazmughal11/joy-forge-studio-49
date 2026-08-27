@@ -54,6 +54,9 @@ function SettingsPage() {
   const [path, setPath] = useState(data.settings.dataFolderPath);
   const { user, account } = useAuth();
   const s = data.settings;
+  // Recomputed on every store change so the gauge tracks live usage.
+  const health = useMemo(() => getStorageHealth(), [data]);
+
 
   const exportFile = () => {
     const blob = new Blob([actions.exportJson()], { type: "application/json" });
