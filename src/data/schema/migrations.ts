@@ -143,6 +143,25 @@ export const MIGRATIONS: Migration[] = [
       `CREATE INDEX IF NOT EXISTS idx_automations_fy ON automations(fiscal_year)`,
     ],
   },
+  {
+    version: 3,
+    name: "direct_messages",
+    up: [
+      `CREATE TABLE IF NOT EXISTS messages (
+        id TEXT PRIMARY KEY,
+        sender TEXT NOT NULL,
+        recipient TEXT NOT NULL,
+        subject TEXT NOT NULL,
+        body TEXT NOT NULL,
+        automation_id TEXT REFERENCES automations(id) ON DELETE SET NULL,
+        record_label TEXT,
+        sent_at TEXT NOT NULL,
+        read_at TEXT,
+        resolved_at TEXT
+      )`,
+      `CREATE INDEX IF NOT EXISTS idx_messages_recipient ON messages(recipient)`,
+    ],
+  },
 ];
 
 /** Migrations still pending for a database currently at `fromVersion`. */

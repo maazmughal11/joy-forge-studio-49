@@ -9,6 +9,8 @@ import {
   Rocket,
   Plus,
   FileBarChart,
+  MessageSquare,
+  Check,
 } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { useAuth } from "@/hooks/useAuth";
@@ -56,6 +58,7 @@ function Home() {
   ] as const;
 
   const attention = attentionItems(records, user).slice(0, 6);
+  const myMessages = (data.messages ?? []).filter((m) => m.to === user && !m.resolvedAt);
   const recent = [...records]
     .sort((a, b) => new Date(b.modifiedDate).getTime() - new Date(a.modifiedDate).getTime())
     .slice(0, 6);
@@ -111,6 +114,34 @@ function Home() {
             <h2 className="text-sm font-semibold">Items requiring my attention</h2>
           </header>
           <ul className="divide-y divide-border">
+            {myMessages.map((m) => (
+              <li key={m.id} className="px-4 py-3">
+                <div className="flex flex-wrap items-center gap-2">
+                  <MessageSquare className="h-4 w-4 shrink-0 text-primary" />
+                  <p className="min-w-0 flex-1 text-sm font-medium">
+                    {m.subject}
+                    {!m.readAt ? (
+                      <span className="ml-2 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">New</span>
+                    ) : null}
+                  </p>
+                  <StatusBadge value={`From ${m.from}`} className="bg-primary/10 text-primary border-primary/25" />
+                  <Button size="sm" variant="ghost" onClick={() => actions.resolveMessage(m.id)}>
+                    <Check className="h-3.5 w-3.5" /> Done
+                  </Button>
+                </div>
+                <p className="mt-1 text-xs text-muted-foreground">{m.body}</p>
+                {m.recordId ? (
+                  <Link
+                    to="/record/$id"
+                    params={{ id: m.recordId }}
+                    className="mt-1 inline-block text-xs font-medium text-primary hover:underline"
+                    onClick={() => actions.markMessageRead(m.id)}
+                  >
+                    {m.recordLabel ?? "View automation"}
+                  </Link>
+                ) : null}
+              </li>
+            ))}
             {attention.map(({ record, reasons, ownerName }) => (
               <li key={record.id} className="flex flex-wrap items-center gap-3 px-4 py-3">
                 <div className="min-w-0 flex-1">
@@ -123,7 +154,7 @@ function Home() {
                 <StatusBadge value={String(record.data['projectStatus'] ?? record.data['opportunityStatus'] ?? "")} />
               </li>
             ))}
-            {attention.length === 0 ? <li className="px-4 py-8 text-center text-sm text-muted-foreground">Nothing needs your attention.</li> : null}
+            {attention.length === 0 && myMessages.length === 0 ? <li className="px-4 py-8 text-center text-sm text-muted-foreground">Nothing needs your attention.</li> : null}
           </ul>
         </section>
 

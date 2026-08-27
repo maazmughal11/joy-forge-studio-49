@@ -16,6 +16,7 @@ import type {
   BackupRepository,
   CommentRepository,
   DocumentRepository,
+  MessageRepository,
   ReferenceDataRepository,
   StorageProvider,
   UserRepository,
@@ -101,6 +102,14 @@ const users: UserRepository = {
   recordLogin: (id) => engine.recordLogin(id),
 };
 
+const messages: MessageRepository = {
+  getMessages: () => getState().messages ?? [],
+  sendMessage: (input) => engine.sendMessage(input),
+  markMessageRead: (id, read) => engine.markMessageRead(id, read),
+  resolveMessage: (id, resolved) => engine.resolveMessage(id, resolved),
+  deleteMessage: (id) => engine.deleteMessage(id),
+};
+
 const referenceData: ReferenceDataRepository = {
   getOptionLists: () => getState().settings.options,
   setOptionList: (key, values) => engine.setOptionList(key, values),
@@ -132,6 +141,7 @@ export const localStorageProvider: StorageProvider & {
   documents,
   audit,
   users,
+  messages,
   referenceData,
   backups,
   initialize: () => hydrate(),

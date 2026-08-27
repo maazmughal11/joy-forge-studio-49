@@ -91,6 +91,13 @@ export const electronSqliteProvider: StorageProvider = {
       channel<never>("users.update")({ id, patch, actor, auditAction, detail }),
     recordLogin: (id) => channel<never>("users.recordLogin")({ id }),
   },
+  messages: {
+    getMessages: () => channel<never>("messages.list")(),
+    sendMessage: (input) => channel<never>("messages.send")(input),
+    markMessageRead: (id, read) => channel<never>("messages.markRead")({ id, read }),
+    resolveMessage: (id, resolved) => channel<never>("messages.resolve")({ id, resolved }),
+    deleteMessage: (id) => channel<never>("messages.delete")({ id }),
+  },
   referenceData: {
     getOptionLists: () => channel<never>("reference.options")(),
     setOptionList: (key, values) => channel<never>("reference.setOption")({ key, values }),
