@@ -22,6 +22,7 @@ const ALLOWED = new Set([
   "documents.list", "documents.add", "documents.remove",
   "audit.history", "audit.adminLog", "audit.log",
   "users.list", "users.getByUsername", "users.create", "users.update", "users.recordLogin",
+  "messages.list", "messages.send", "messages.markRead", "messages.resolve", "messages.delete",
   "reference.options", "reference.setOption", "reference.settings", "reference.updateSettings",
   "backups.list", "backups.create", "backups.restore", "backups.delete",
   "backups.exportJson", "backups.importJson", "backups.resetToSeed",
