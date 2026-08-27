@@ -1,0 +1,41 @@
+{
+  "appId": "com.automationcoe.portfoliotracker",
+  "productName": "Automation CoE Portfolio Tracker",
+  "directories": {
+    "output": "release",
+    "buildResources": "build"
+  },
+  "files": [
+    "electron/**/*",
+    {
+      "from": "dist-electron/renderer",
+      "to": "renderer"
+    },
+    "package.json",
+    "!node_modules/**/*"
+  ],
+  "extraMetadata": {
+    "main": "electron/main.cjs"
+  },
+  "win": {
+    "target": [
+      {
+        "target": "nsis",
+        "arch": [
+          "x64"
+        ]
+      }
+    ],
+    "icon": "build/icon.png"
+  },
+  "nsis": {
+    "oneClick": false,
+    "perMachine": false,
+    "allowToChangeInstallationDirectory": true,
+    "createDesktopShortcut": true,
+    "createStartMenuShortcut": true,
+    "shortcutName": "Automation CoE Portfolio Tracker"
+  },
+  "publish": null,
+  "asar": true
+}

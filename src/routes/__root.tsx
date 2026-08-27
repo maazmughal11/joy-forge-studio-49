@@ -101,7 +101,15 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   errorComponent: ErrorComponent,
 });
 
+/**
+ * Desktop (Electron) builds render as a client-only SPA mounted into an
+ * existing document, so the shell must not emit a second <html> document.
+ * The web/SSR build is unaffected.
+ */
+const IS_DESKTOP_SHELL = import.meta.env['VITE_DESKTOP_SPA'] === "true";
+
 function RootShell({ children }: { children: ReactNode }) {
+  if (IS_DESKTOP_SHELL) return <>{children}</>;
   return (
     <html lang="en">
       <head>
