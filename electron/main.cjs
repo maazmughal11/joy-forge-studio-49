@@ -5,16 +5,16 @@
  *  - renderer: contextIsolation on, nodeIntegration off, sandboxed, no remote
  *  - the renderer only reaches the main process through the allow-listed
  *    `rpa:data` IPC channel exposed by electron/preload.cjs
- *  - all writable data lives in app.getPath('userData'), never inside the
- *    installed application directory
+ *  - all filesystem/database work happens here, never in the renderer
  *
- * Storage: the application currently persists through its local storage
- * provider inside the renderer. The SQLite gateway (electron/db.cjs) is wired
- * up and ready, but only activated once better-sqlite3 ships with the build.
+ * Storage: ONE shared portfolio database on the company network share
+ * (see electron/workspace.cjs). Local AppData is only used for Chromium cache
+ * and window preferences — never for authoritative portfolio data.
  */
 const path = require("node:path");
 const fs = require("node:fs");
-const { app, BrowserWindow, ipcMain, shell, protocol, net } = require("electron");
+const { app, BrowserWindow, ipcMain, shell, protocol, net, dialog } = require("electron");
+const workspace = require("./workspace.cjs");
 
 // ES modules cannot be loaded over file:// in Chromium, so the packaged app is
 // served from an internal, read-only app:// protocol backed by local files.
@@ -40,30 +40,6 @@ function registerAppProtocol() {
 
 const isDev = !app.isPackaged;
 const DEV_SERVER_URL = process.env.ELECTRON_RENDERER_URL || "http://localhost:5199/index.electron.html";
-
-let db = null;
-let sqliteReady = false;
-
-/** Absolute path to a writable file inside the user data directory. */
-function userDataFile(name) {
-  const dir = app.getPath("userData");
-  fs.mkdirSync(dir, { recursive: true });
-  return path.join(dir, name);
-}
-
-function tryOpenDatabase() {
-  try {
-    const { openDatabase } = require("./db.cjs");
-    db = openDatabase(userDataFile("automation-coe-portfolio.db"));
-    sqliteReady = true;
-  } catch (error) {
-    // Expected until better-sqlite3 is bundled: the app keeps running on the
-    // local storage provider inside the renderer.
-    console.info("[storage] SQLite unavailable, using local storage provider:", error.message);
-    db = null;
-    sqliteReady = false;
-  }
-}
 
 function createWindow() {
   const win = new BrowserWindow({
@@ -101,19 +77,70 @@ function createWindow() {
   return win;
 }
 
+/** Render report HTML off-screen and print it or save it as a PDF. */
+async function renderForPrint(html, handler) {
+  const printWindow = new BrowserWindow({
+    show: false,
+    webPreferences: { offscreen: false, contextIsolation: true, nodeIntegration: false, sandbox: true },
+  });
+  try {
+    await printWindow.loadURL("data:text/html;charset=utf-8," + encodeURIComponent(html));
+    // Let webfonts/layout settle before rasterising.
+    await new Promise((r) => setTimeout(r, 400));
+    return await handler(printWindow);
+  } finally {
+    if (!printWindow.isDestroyed()) printWindow.destroy();
+  }
+}
+
+async function savePdf({ html, suggestedName }) {
+  const parent = BrowserWindow.getFocusedWindow() ?? BrowserWindow.getAllWindows()[0];
+  const result = await dialog.showSaveDialog(parent, {
+    title: "Save report as PDF",
+    defaultPath: path.join(app.getPath("documents"), suggestedName || "report.pdf"),
+    filters: [{ name: "PDF", extensions: ["pdf"] }],
+  });
+  if (result.canceled || !result.filePath) return { ok: false, canceled: true };
+  const buffer = await renderForPrint(html, (win) =>
+    win.webContents.printToPDF({ landscape: true, printBackground: true, margins: { marginType: "default" } }),
+  );
+  fs.writeFileSync(result.filePath, buffer);
+  return { ok: true, filePath: result.filePath };
+}
+
+async function printPaper({ html }) {
+  return renderForPrint(
+    html,
+    (win) =>
+      new Promise((resolve) => {
+        win.webContents.print({ silent: false, printBackground: true, landscape: true }, (success, reason) =>
+          resolve({ ok: success, reason }),
+        );
+      }),
+  );
+}
+
 app.whenReady().then(() => {
   registerAppProtocol();
-  tryOpenDatabase();
 
   ipcMain.handle("rpa:data", async (_event, message) => {
     const { channel, payload } = message ?? {};
-    if (channel === "app.paths") {
-      return { userData: app.getPath("userData"), sqliteReady };
+    switch (channel) {
+      case "app.paths":
+        return { userData: app.getPath("userData"), workspace: workspace.status() };
+      case "workspace.status":
+        return workspace.status();
+      case "workspace.read":
+        return workspace.read();
+      case "workspace.write":
+        return workspace.write(payload ?? {});
+      case "print.pdf":
+        return savePdf(payload ?? {});
+      case "print.paper":
+        return printPaper(payload ?? {});
+      default:
+        throw new Error(`Unknown data channel: ${channel}`);
     }
-    if (!db) throw new Error("SQLite storage is not enabled in this build.");
-    const handler = db.handlers[channel];
-    if (!handler) throw new Error(`Unknown data channel: ${channel}`);
-    return handler(payload ?? {});
   });
 
   createWindow();
