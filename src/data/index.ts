@@ -3,33 +3,17 @@
  *
  * Everything the UI needs to read or write persistent data goes through this
  * module. Pages and components must never import `@/lib/store`, localStorage,
- * IndexedDB, SQLite or any backend client directly.
+ * the network share or any backend client directly.
  *
  *   UI  →  @/data (repositories + reactive read model)  →  StorageProvider
- *
- * The active provider is selected in `@/data/config`.
  */
 
 import { useSyncExternalStore } from "react";
 import { localStorageProvider } from "./providers/local";
-import { storageConfig } from "./config";
 import type { StorageProvider } from "./repositories";
 import type { AppData, Automation } from "@/domain/models";
 
-/**
- * Resolve the active provider. Only the local provider is wired today; other
- * providers are loaded lazily by the desktop/enterprise builds so that no
- * backend client is bundled into the browser app.
- */
-function resolveProvider(): StorageProvider {
-  switch (storageConfig.provider) {
-    case "local":
-    default:
-      return localStorageProvider;
-  }
-}
-
-export const provider = resolveProvider();
+export const provider: StorageProvider = localStorageProvider;
 
 /** Repository handles — the only supported way to reach persistent data. */
 export const repositories = {
@@ -40,12 +24,12 @@ export const repositories = {
   documents: provider.documents,
   audit: provider.audit,
   users: provider.users,
-  messages: provider.messages,
+  tasks: provider.tasks,
   referenceData: provider.referenceData,
-  backups: provider.backups,
+  workspace: provider.workspace,
 };
 
-/** Opens the store and applies pending migrations. Safe to call repeatedly. */
+/** Opens the store, connects to the shared workspace and starts syncing. */
 export function initializeData() {
   return provider.initialize();
 }
@@ -54,11 +38,6 @@ export function initializeData() {
 /* Reactive read model                                                 */
 /* ------------------------------------------------------------------ */
 
-/**
- * Providers expose a snapshot of the workspace document plus a change
- * subscription so React can render synchronously. Asynchronous providers
- * (SQLite/REST) implement this by keeping a local cache warm.
- */
 const readModel = localStorageProvider;
 
 export function useAppData(): AppData {
@@ -67,6 +46,11 @@ export function useAppData(): AppData {
 
 export function useAutomation(id: string): Automation | undefined {
   return useAppData().automations.find((a) => a.id === id);
+}
+
+/** Live shared-database connection state (status, last sync, last update). */
+export function useConnection(): WorkspaceConnection {
+  return useSyncExternalStore(readModel.subscribe, getConnection, getConnection);
 }
 
 /* ------------------------------------------------------------------ */
@@ -97,6 +81,7 @@ export const actions = {
   // Weekly updates
   getWeeklyUpdates: r.weeklyUpdates.getWeeklyUpdates,
   addUpdate: r.weeklyUpdates.createWeeklyUpdate,
+  markUpdateRead: r.weeklyUpdates.markRead,
 
   // Approvals
   getApprovals: r.approvals.getApprovals,
@@ -115,42 +100,34 @@ export const actions = {
   getUsers: r.users.getUsers,
   createAccount: (...args: Parameters<typeof r.users.createUser>) => r.users.createUser(...args),
   updateAccount: r.users.updateUser,
+  deleteAccount: r.users.deleteUser,
   recordLogin: r.users.recordLogin,
 
-  // Direct messages
-  getMessages: r.messages.getMessages,
-  sendMessage: r.messages.sendMessage,
-  markMessageRead: r.messages.markMessageRead,
-  resolveMessage: r.messages.resolveMessage,
-  deleteMessage: r.messages.deleteMessage,
+  // Tasks
+  getTasks: r.tasks.getTasks,
+  createTask: r.tasks.createTask,
+  updateTask: r.tasks.updateTask,
+  deleteTask: r.tasks.deleteTask,
 
   // Reference data & settings
   setOptionList: r.referenceData.setOptionList,
   setSettings: r.referenceData.updateSettings,
   setCurrentUser: (name: string) => r.referenceData.updateSettings({ currentUser: name }),
-  setDataFolderPath: (path: string) => r.referenceData.updateSettings({ dataFolderPath: path }),
-  setStorageMode: (mode: AppData["settings"]["storageMode"], user: string) => {
-    r.referenceData.updateSettings({
-      storageMode: mode,
-      workspaceLock: mode === "shared" ? { user, acquiredAt: new Date().toISOString() } : null,
-    });
-    r.audit.logAudit(user, `Storage mode set to ${mode === "shared" ? "Shared Workspace" : "Local Workspace"}`);
-  },
 
-  // Backup / restore / portability
-  createBackup: (...args: Parameters<typeof r.backups.createBackup>) => r.backups.createBackup(...args),
-  restoreBackup: r.backups.restoreBackup,
-  deleteBackup: r.backups.deleteBackup,
-  exportJson: () => r.backups.exportJson() as string,
-  importJson: r.backups.importJson,
-  resetToSeed: r.backups.resetToSeed,
+  // Shared workspace
+  sync: () => r.workspace.sync(),
+  exportJson: () => r.workspace.exportJson() as string,
+  importJson: r.workspace.importJson,
+  eraseAllData: r.workspace.eraseAllData,
 };
 
 /** Back-compat alias used by the app shell during bootstrap. */
 export const hydrate = initializeData;
 
-/** Storage diagnostics (capacity, pending write failures) for the admin UI. */
-export { getStorageHealth, flushPersist } from "@/lib/store";
+/** Storage diagnostics and connection state for the admin UI. */
+export { getStorageHealth, flushPersist, getConnection, isReadOnly } from "@/lib/store";
+export type { WorkspaceConnection, ConnectionStatus } from "@/lib/store";
+
+import { getConnection, type WorkspaceConnection } from "@/lib/store";
 
 export type { StorageProvider } from "./repositories";
-

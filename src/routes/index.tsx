@@ -9,8 +9,9 @@ import {
   Rocket,
   Plus,
   FileBarChart,
-  MessageSquare,
   Check,
+  ClipboardList,
+  UserPlus,
 } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { useAuth } from "@/hooks/useAuth";
@@ -21,10 +22,12 @@ import {
   awaitingApproval,
   awaitingAssessment,
   approachingProduction,
-  missingWeeklyUpdate,
+  myTasks,
   nameOf,
   onHold,
 } from "@/lib/derive";
+import { AssignTaskDialog } from "@/components/AssignTaskDialog";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 
 export const Route = createFileRoute("/")({
@@ -45,6 +48,7 @@ function Home() {
   const data = useAppData();
   const navigate = useNavigate();
   const { user, can, account } = useAuth();
+  const [assignOpen, setAssignOpen] = useState(false);
   const records = data.automations.filter((a) => a.stage !== "archived");
 
   const cards = [
@@ -53,12 +57,12 @@ function Home() {
     { label: "Awaiting Approval", value: records.filter(awaitingApproval).length, icon: BadgeCheck, to: "/approvals", search: { view: "pending" } },
     { label: "Active Projects", value: records.filter((a) => a.stage === "project").length, icon: FolderKanban, to: "/projects", search: { view: "active" } },
     { label: "Projects On Hold", value: records.filter((a) => a.stage === "project" && onHold(a)).length, icon: PauseCircle, to: "/projects", search: { view: "hold" } },
-    { label: "Missing Updates", value: records.filter(missingWeeklyUpdate).length, icon: AlarmClock, to: "/weekly-updates", search: { view: "missing" } },
+    { label: "My Open Tasks", value: myTasks(data.tasks, user).length, icon: ClipboardList, to: "/my-work", search: {} },
     { label: "Approaching Production", value: records.filter(approachingProduction).length, icon: Rocket, to: "/projects", search: { view: "approaching" } },
   ] as const;
 
   const attention = attentionItems(records, user).slice(0, 6);
-  const myMessages = (data.messages ?? []).filter((m) => m.to === user && !m.resolvedAt);
+  const openTasks = myTasks(data.tasks, user).slice(0, 6);
   const recent = [...records]
     .sort((a, b) => new Date(b.modifiedDate).getTime() - new Date(a.modifiedDate).getTime())
     .slice(0, 6);
@@ -71,7 +75,7 @@ function Home() {
   return (
     <AppShell
       title={`Welcome back, ${user.split(" ")[0]}`}
-      subtitle="Your automation portfolio at a glance — everything stored locally on this machine."
+      subtitle="Your automation portfolio at a glance — shared live with the Automation CoE team."
       actions={
         <>
           {can("ideas.create") ? (
@@ -79,6 +83,9 @@ function Home() {
               <Plus className="h-4 w-4" /> Submit Idea
             </Button>
           ) : null}
+          <Button variant="secondary" onClick={() => setAssignOpen(true)}>
+            <UserPlus className="h-4 w-4" /> Assign Task
+          </Button>
           <Button variant="secondary" asChild>
             <Link to="/projects">Update Project</Link>
           </Button>
@@ -114,30 +121,24 @@ function Home() {
             <h2 className="text-sm font-semibold">Items requiring my attention</h2>
           </header>
           <ul className="divide-y divide-border">
-            {myMessages.map((m) => (
-              <li key={m.id} className="px-4 py-3">
+            {openTasks.map((t) => (
+              <li key={t.id} className="px-4 py-3">
                 <div className="flex flex-wrap items-center gap-2">
-                  <MessageSquare className="h-4 w-4 shrink-0 text-primary" />
-                  <p className="min-w-0 flex-1 text-sm font-medium">
-                    {m.subject}
-                    {!m.readAt ? (
-                      <span className="ml-2 rounded-full bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary">New</span>
-                    ) : null}
-                  </p>
-                  <StatusBadge value={`From ${m.from}`} className="bg-primary/10 text-primary border-primary/25" />
-                  <Button size="sm" variant="ghost" onClick={() => actions.resolveMessage(m.id)}>
+                  <ClipboardList className="h-4 w-4 shrink-0 text-primary" />
+                  <p className="min-w-0 flex-1 text-sm font-medium">{t.title}</p>
+                  <StatusBadge value={`From ${t.assignedBy}`} className="bg-primary/10 text-primary border-primary/25" />
+                  <StatusBadge value={t.priority} />
+                  <Button size="sm" variant="ghost" onClick={() => actions.updateTask(t.id, { status: "Completed" })}>
                     <Check className="h-3.5 w-3.5" /> Done
                   </Button>
                 </div>
-                <p className="mt-1 text-xs text-muted-foreground">{m.body}</p>
-                {m.recordId ? (
-                  <Link
-                    to="/record/$id"
-                    params={{ id: m.recordId }}
-                    className="mt-1 inline-block text-xs font-medium text-primary hover:underline"
-                    onClick={() => actions.markMessageRead(m.id)}
-                  >
-                    {m.recordLabel ?? "View automation"}
+                {t.description ? <p className="mt-1 text-xs text-muted-foreground">{t.description}</p> : null}
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {t.dueDate ? `Due ${t.dueDate}` : "No due date"} · {t.status}
+                </p>
+                {t.recordId ? (
+                  <Link to="/record/$id" params={{ id: t.recordId }} className="mt-1 inline-block text-xs font-medium text-primary hover:underline">
+                    {t.recordLabel ?? "View automation"}
                   </Link>
                 ) : null}
               </li>
@@ -154,7 +155,7 @@ function Home() {
                 <StatusBadge value={String(record.data['projectStatus'] ?? record.data['opportunityStatus'] ?? "")} />
               </li>
             ))}
-            {attention.length === 0 && myMessages.length === 0 ? <li className="px-4 py-8 text-center text-sm text-muted-foreground">Nothing needs your attention.</li> : null}
+            {attention.length === 0 && openTasks.length === 0 ? <li className="px-4 py-8 text-center text-sm text-muted-foreground">Nothing needs your attention.</li> : null}
           </ul>
         </section>
 
@@ -176,6 +177,8 @@ function Home() {
           </ul>
         </section>
       </div>
+
+      <AssignTaskDialog open={assignOpen} onOpenChange={setAssignOpen} assignedBy={user} />
     </AppShell>
   );
 }

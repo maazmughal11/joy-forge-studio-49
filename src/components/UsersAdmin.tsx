@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { KeyRound, Plus, ShieldCheck, UserCog } from "lucide-react";
+import { KeyRound, Plus, ShieldCheck, Trash2, UserCog } from "lucide-react";
 import { toast } from "sonner";
 import { useAppData } from "@/data";
 import { authService } from "@/services/auth-service";
@@ -21,6 +21,7 @@ export function UsersAdmin({ actor }: { actor: string }) {
   const [addOpen, setAddOpen] = useState(false);
   const [editing, setEditing] = useState<UserAccount | null>(null);
   const [pinFor, setPinFor] = useState<UserAccount | null>(null);
+  const [deleting, setDeleting] = useState<UserAccount | null>(null);
 
   return (
     <section className="card-surface p-4">
@@ -49,7 +50,7 @@ export function UsersAdmin({ actor }: { actor: string }) {
             </tr>
           </thead>
           <tbody>
-            {data.accounts.map((a) => (
+            {data.accounts.filter((a) => !a.deleted).map((a) => (
               <tr key={a.id} className="border-t border-border/70">
                 <td className="px-3 py-2 font-medium">
                   {a.displayName}
@@ -85,12 +86,15 @@ export function UsersAdmin({ actor }: { actor: string }) {
                       <Button size="sm" variant="ghost" onClick={() => setPinFor(a)}>
                         <KeyRound className="h-3.5 w-3.5" /> Reset PIN
                       </Button>
+                      <Button size="sm" variant="ghost" className="text-destructive" onClick={() => setDeleting(a)}>
+                        <Trash2 className="h-3.5 w-3.5" /> Delete
+                      </Button>
                     </>
                   )}
                 </td>
               </tr>
             ))}
-            {data.accounts.length === 0 ? (
+            {data.accounts.filter((a) => !a.deleted).length === 0 ? (
               <tr><td colSpan={7} className="px-3 py-6 text-center text-muted-foreground">No accounts yet.</td></tr>
             ) : null}
           </tbody>
@@ -100,6 +104,35 @@ export function UsersAdmin({ actor }: { actor: string }) {
       <AddUserDialog open={addOpen} onClose={() => setAddOpen(false)} actor={actor} />
       <EditUserDialog account={editing} onClose={() => setEditing(null)} actor={actor} />
       <ResetPinDialog account={pinFor} onClose={() => setPinFor(null)} actor={actor} />
+
+      <Dialog open={!!deleting} onOpenChange={(o) => !o && setDeleting(null)}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Delete {deleting?.displayName}?</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            This removes the account and its ability to sign in. Everything the person created — automations,
+            approvals, weekly updates, tasks, comments and audit history — is kept exactly as it is.
+          </p>
+          <div className="flex justify-end gap-2">
+            <Button variant="secondary" onClick={() => setDeleting(null)}>Cancel</Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                const target = deleting;
+                setDeleting(null);
+                if (!target) return;
+                void authService
+                  .deleteAccount(target.id, actor)
+                  .then(() => toast.success(`${target.displayName} deleted`))
+                  .catch((e) => toast.error(e instanceof Error ? e.message : "Could not delete the user"));
+              }}
+            >
+              Delete user
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </section>
   );
 }

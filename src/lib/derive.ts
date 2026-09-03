@@ -1,4 +1,4 @@
-import type { Approval, Automation } from "./types";
+import type { Approval, Automation, TaskRecord } from "./types";
 import { completeness, EXPECTED_DOCS, GOVERNANCE_FIELDS, isFilled } from "./fields";
 
 export const nameOf = (a: Automation) => String(a.data['opportunityName'] ?? "Untitled opportunity");
@@ -13,8 +13,21 @@ export const daysSince = (iso?: string) =>
 
 export const lastUpdate = (a: Automation) => a.updates[a.updates.length - 1];
 
-export const missingWeeklyUpdate = (a: Automation) =>
+/**
+ * Weekly updates are OPTIONAL. This flag is purely informational (it shows
+ * how fresh the latest update is) and must never be used as a penalty, a
+ * compliance failure, or an "attention" reason.
+ */
+export const staleWeeklyUpdate = (a: Automation) =>
   (a.stage === "project" || a.stage === "production") && daysSince(lastUpdate(a)?.date) > 7;
+
+/** An update nobody on this account has opened yet. */
+export const isUnreadUpdate = (u: { readBy?: string[] } | undefined, user: string) =>
+  Boolean(u) && !(u!.readBy ?? []).includes(user);
+
+/** Records with at least one weekly update the signed-in user has not read. */
+export const hasUnreadUpdates = (a: Automation, user: string) =>
+  a.updates.some((u) => isUnreadUpdate(u, user));
 
 export const awaitingAssessment = (a: Automation) =>
   a.stage === "idea" && ["Ideation", "Initial Assessment"].includes(String(a.data['opportunityStatus'] ?? ""));
@@ -41,6 +54,20 @@ export function moveBlockers(a: Automation) {
   return blockers;
 }
 
+export type AttentionTask = { task: TaskRecord };
+
+/** Open tasks assigned to the signed-in user, most urgent first. */
+export function myTasks(tasks: TaskRecord[], user: string) {
+  const rank = { High: 0, Medium: 1, Low: 2 } as const;
+  return tasks
+    .filter((t) => t.assignedTo === user && t.status !== "Completed")
+    .sort(
+      (a, b) =>
+        rank[a.priority] - rank[b.priority] ||
+        new Date(a.dueDate ?? a.createdDate).getTime() - new Date(b.dueDate ?? b.createdDate).getTime(),
+    );
+}
+
 export function attentionItems(records: Automation[], user: string) {
   return records
     .filter((a) => a.stage !== "archived")
@@ -51,7 +78,6 @@ export function attentionItems(records: Automation[], user: string) {
       const mine = [a.data['businessAnalyst'], a.data['submittedBy']].includes(user);
       const reasons: string[] = [];
       if (awaitingApproval(a)) reasons.push("Awaiting sponsor approval");
-      if (missingWeeklyUpdate(a)) reasons.push("Weekly update overdue");
       if (readyToMove(a)) reasons.push("Ready to move to Project Tracking");
       if (onHold(a)) reasons.push("On hold");
       if (completeness(a).percent < 60) reasons.push("Record incomplete");
@@ -87,12 +113,13 @@ export const ragOf = (a: Automation) => lastUpdate(a)?.rag ?? "";
 export const percentCompleteOf = (a: Automation) => lastUpdate(a)?.percentComplete ?? 0;
 export const daysSinceUpdate = (a: Automation) => daysSince(lastUpdate(a)?.date);
 
-export const updateCompliance = (a: Automation) => (missingWeeklyUpdate(a) ? "Missing Update" : "Current");
+/** Informational freshness label — never a compliance judgement. */
+export const updateFreshness = (a: Automation) => (lastUpdate(a) ? (staleWeeklyUpdate(a) ? "Older than 7 days" : "Current") : "No updates yet");
 
 export function weeklyUpdateRows(records: Automation[]) {
   return records
     .filter((a) => a.stage === "project" || a.stage === "production")
-    .map((a) => ({ record: a, update: lastUpdate(a), missing: missingWeeklyUpdate(a) }));
+    .map((a) => ({ record: a, update: lastUpdate(a), stale: staleWeeklyUpdate(a) }));
 }
 
 // ---------- Approvals ----------

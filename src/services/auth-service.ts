@@ -44,7 +44,7 @@ export const authService = {
   signOut: () => authSession.signOut(),
 
   /* ---------- accounts ---------- */
-  listAccounts: () => repositories.users.getUsers(),
+  listAccounts: async () => (await repositories.users.getUsers()).filter((a) => !a.deleted),
   hasAdministrator: async () => {
     const accounts = await repositories.users.getUsers();
     return accounts.some((a) => a.role === "Administrator" && a.active);
@@ -134,6 +134,16 @@ export const authService = {
     );
   },
 
+  /**
+   * Deletes a user account. Historical data the person created — records,
+   * approvals, weekly updates, tasks, comments and the audit trail — is always
+   * preserved; only their ability to sign in is removed.
+   */
+  async deleteAccount(accountId: string, actor: string) {
+    if (await this.isProtected(accountId)) throw new Error(PROTECTED_ACCOUNT_ERROR);
+    return repositories.users.deleteUser(accountId, actor);
+  },
+
   async updateAccount(accountId: string, patch: Partial<UserAccount>, actor: string, auditAction?: string, detail?: string) {
     if (await this.isProtected(accountId)) throw new Error(PROTECTED_ACCOUNT_ERROR);
     return repositories.users.updateUser(accountId, patch, actor, auditAction, detail);
@@ -149,6 +159,7 @@ export const authService = {
       registerFailure(username);
       return { ok: false, error: "Incorrect username or PIN." };
     }
+    if (account.deleted) return { ok: false, error: "This account no longer exists." };
     if (!account.active) return { ok: false, error: "This account has been deactivated." };
 
     const valid = await verifyPin(pin, account);

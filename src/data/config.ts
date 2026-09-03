@@ -36,12 +36,12 @@ function resolveProvider(): StorageProviderId {
   return DEFAULT_PROVIDER;
 }
 
-export const CURRENT_SCHEMA_VERSION = 6;
+export const CURRENT_SCHEMA_VERSION = 7;
 
 export const storageConfig: StorageConfig = {
   provider: resolveProvider(),
   schemaVersion: CURRENT_SCHEMA_VERSION,
-  localStorageKey: "rpa-portfolio-data-v6",
+  localStorageKey: "rpa-portfolio-data-v7",
   ...(import.meta.env?.['VITE_API_BASE_URL'] ? { apiBaseUrl: String(import.meta.env['VITE_API_BASE_URL']) } : {}),
 };
 

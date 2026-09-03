@@ -1,19 +1,17 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useMemo, useRef, useState } from "react";
-import { Download, Upload, RotateCcw, X, Plus, Database, Save, HardDriveDownload } from "lucide-react";
+import { Download, Upload, X, Plus, Database, RefreshCw, ShieldAlert, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
 import { UsersAdmin } from "@/components/UsersAdmin";
 import { ImportCenter } from "@/components/ImportCenter";
 import { useAuth } from "@/hooks/useAuth";
-import { useAppData, actions, getStorageHealth } from "@/data";
+import { useAppData, useConnection, actions, getStorageHealth } from "@/data";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
-
 
 export const Route = createFileRoute("/settings")({
   head: () => ({
@@ -21,10 +19,10 @@ export const Route = createFileRoute("/settings")({
       { title: "Settings | Automation CoE Portfolio" },
       {
         name: "description",
-        content: "Manage workspace storage mode, Excel migration imports, backups and restore points, team members and dropdown option lists.",
+        content: "Shared database status and sync, Excel migration imports, team members and permissions, and dropdown option lists.",
       },
       { property: "og:title", content: "Settings | Automation CoE Portfolio" },
-      { property: "og:description", content: "Workspace storage, Excel import center, backup and restore, and option list administration." },
+      { property: "og:description", content: "Shared workspace status, Excel import center, users and permissions, and option list administration." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],
@@ -47,16 +45,35 @@ const LIST_LABELS: Record<string, string> = {
   documentTypes: "Document Types",
 };
 
+const when = (iso?: string | null) => (iso ? new Date(iso).toLocaleString() : "—");
 
 function SettingsPage() {
   const data = useAppData();
+  const connection = useConnection();
   const fileRef = useRef<HTMLInputElement>(null);
-  const [path, setPath] = useState(data.settings.dataFolderPath);
   const { user, account } = useAuth();
   const s = data.settings;
+  const isAdmin = account?.role === "Administrator";
+  const [eraseOpen, setEraseOpen] = useState(false);
+  const [eraseConfirm, setEraseConfirm] = useState("");
   // Recomputed on every store change so the gauge tracks live usage.
   const health = useMemo(() => getStorageHealth(), [data]);
 
+  const statusTone =
+    connection.status === "connected"
+      ? "border-success/30 bg-success/10 text-success"
+      : connection.status === "offline"
+        ? "border-destructive/30 bg-destructive/10 text-destructive"
+        : "border-border bg-muted text-muted-foreground";
+
+  const statusLabel =
+    connection.status === "connected"
+      ? "Connected"
+      : connection.status === "offline"
+        ? "Disconnected"
+        : connection.status === "syncing"
+          ? "Syncing…"
+          : "Connecting…";
 
   const exportFile = () => {
     const blob = new Blob([actions.exportJson()], { type: "application/json" });
@@ -72,7 +89,7 @@ function SettingsPage() {
   return (
     <AppShell
       title="Settings"
-      subtitle="Users and permissions, workspace storage, migration, backups and option lists"
+      subtitle="Users and permissions, shared database status, migration and option lists"
       requires="settings.manage"
     >
       <div className="mb-4">
@@ -81,47 +98,48 @@ function SettingsPage() {
 
       <div className="grid gap-4 lg:grid-cols-2">
         <section className="card-surface p-4">
-          <h2 className="flex items-center gap-2 text-sm font-semibold">
-            <Database className="h-4 w-4 text-primary" /> Workspace &amp; storage mode
-          </h2>
-          <p className="mt-1 text-xs text-muted-foreground">
-            Local Workspace keeps everything on this machine. Shared Workspace is for a team folder synced through
-            SharePoint/OneDrive — one person edits at a time and a soft lock records who has it open.
-          </p>
-          <div className="mt-3 flex flex-wrap gap-2">
-            {(["local", "shared"] as const).map((mode) => (
-              <button
-                key={mode}
-                onClick={() => {
-                  actions.setStorageMode(mode, user);
-                  toast.success(mode === "shared" ? "Shared Workspace enabled" : "Local Workspace enabled");
-                }}
-                className={cn(
-                  "rounded-full border px-3.5 py-1.5 text-xs font-medium transition-colors",
-                  s.storageMode === mode
-                    ? "border-primary bg-primary text-primary-foreground"
-                    : "border-border bg-card text-muted-foreground hover:text-foreground",
-                )}
-              >
-                {mode === "local" ? "Local Workspace" : "Shared Workspace"}
-              </button>
-            ))}
+          <div className="flex flex-wrap items-center gap-2">
+            <h2 className="flex items-center gap-2 text-sm font-semibold">
+              <Database className="h-4 w-4 text-primary" /> Shared database
+            </h2>
+            <span className={cn("rounded-full border px-2.5 py-0.5 text-[11px] font-medium", statusTone)}>{statusLabel}</span>
+            <Button
+              size="sm"
+              variant="secondary"
+              className="ml-auto"
+              onClick={async () => {
+                const next = await actions.sync();
+                toast[next && (next as { status?: string }).status === "offline" ? "error" : "success"](
+                  next && (next as { status?: string }).status === "offline"
+                    ? "The shared workspace could not be reached."
+                    : "Synced with the shared workspace",
+                );
+              }}
+            >
+              <RefreshCw className="h-4 w-4" /> Sync now
+            </Button>
           </div>
-          {s.workspaceLock ? (
-            <p className="mt-2 text-xs text-warning-foreground">
-              Workspace lock held by {s.workspaceLock.user} since {new Date(s.workspaceLock.acquiredAt).toLocaleString()}.
+          <p className="mt-2 font-mono text-[11px] break-all text-muted-foreground">{connection.path}</p>
+          <dl className="mt-3 space-y-1.5 text-sm">
+            <div className="flex justify-between gap-3">
+              <dt className="text-muted-foreground">Last updated</dt>
+              <dd>{when(connection.lastUpdatedAt)}{connection.lastUpdatedBy ? ` · ${connection.lastUpdatedBy}` : ""}</dd>
+            </div>
+            <div className="flex justify-between gap-3">
+              <dt className="text-muted-foreground">Last synced</dt>
+              <dd>{when(connection.lastSyncedAt)}</dd>
+            </div>
+            <div className="flex justify-between gap-3">
+              <dt className="text-muted-foreground">Records</dt>
+              <dd className="tabular-nums">{data.automations.length.toLocaleString()}</dd>
+            </div>
+          </dl>
+          {connection.error ? (
+            <p className="mt-3 rounded-md border border-destructive/40 bg-destructive/10 p-2 text-xs text-destructive">
+              {connection.error} Your changes are held on this machine and will be written as soon as the share is
+              reachable again — nothing has been lost.
             </p>
           ) : null}
-
-          <div className="mt-4 space-y-2">
-            <Label htmlFor="folder">Shared folder path</Label>
-            <div className="flex gap-2">
-              <Input id="folder" value={path} onChange={(e) => setPath(e.target.value)} />
-              <Button variant="secondary" onClick={() => { actions.setDataFolderPath(path); toast.success("Folder path saved"); }}>
-                <Save className="h-4 w-4" /> Save
-              </Button>
-            </div>
-          </div>
 
           <div className="mt-4 flex flex-wrap gap-2">
             <Button onClick={exportFile}>
@@ -129,16 +147,6 @@ function SettingsPage() {
             </Button>
             <Button variant="secondary" onClick={() => fileRef.current?.click()}>
               <Upload className="h-4 w-4" /> Import data file
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => {
-                actions.createBackup(user, "Safety backup before reset");
-                actions.resetToSeed();
-                toast.success("Sample data restored");
-              }}
-            >
-              <RotateCcw className="h-4 w-4" /> Reset to sample data
             </Button>
             <input
               ref={fileRef}
@@ -149,7 +157,6 @@ function SettingsPage() {
                 const file = e.target.files?.[0];
                 if (!file) return;
                 try {
-                  actions.createBackup(user, "Safety backup before import");
                   actions.importJson(await file.text());
                   toast.success("Portfolio data imported");
                 } catch {
@@ -163,11 +170,11 @@ function SettingsPage() {
 
         <section className="card-surface p-4">
           <h2 className="flex items-center gap-2 text-sm font-semibold">
-            <Database className="h-4 w-4 text-primary" /> Storage health
+            <Database className="h-4 w-4 text-primary" /> Workspace health
           </h2>
           <div className="mt-3 space-y-2 text-sm">
             <div className="flex items-center justify-between">
-              <span className="text-muted-foreground">Workspace size</span>
+              <span className="text-muted-foreground">Cached workspace size</span>
               <span className="tabular-nums">
                 {health.usedKb.toLocaleString()} KB of {health.budgetKb.toLocaleString()} KB ({health.percent}%)
               </span>
@@ -180,98 +187,62 @@ function SettingsPage() {
             </div>
             <div className="flex items-center justify-between text-xs text-muted-foreground">
               <span>{health.records.toLocaleString()} records</span>
-              <span>{health.backups} restore points stored</span>
+              <span>{data.accounts.filter((a) => !a.deleted).length} active user account(s)</span>
             </div>
             {health.error ? (
               <p className="rounded-md border border-destructive/40 bg-destructive/10 p-2 text-xs text-destructive">
                 {health.error}
               </p>
-            ) : health.percent > 85 ? (
-              <p className="rounded-md border border-amber-500/40 bg-amber-500/10 p-2 text-xs text-amber-700 dark:text-amber-400">
-                Storage is filling up. Export a JSON backup and reduce stored restore points to stay comfortable.
-              </p>
             ) : null}
           </div>
-        </section>
 
-        <section className="card-surface p-4">
-          <h2 className="flex items-center gap-2 text-sm font-semibold">
-            <HardDriveDownload className="h-4 w-4 text-primary" /> Backup &amp; restore
-          </h2>
-
-          <div className="mt-3 flex items-center justify-between rounded-md border border-border p-3">
-            <div>
-              <p className="text-sm font-medium">Automatic backups</p>
-              <p className="text-xs text-muted-foreground">Take a restore point whenever data is imported or reset.</p>
+          {isAdmin ? (
+            <div className="mt-4 rounded-md border border-destructive/30 p-3">
+              <p className="flex items-center gap-2 text-sm font-medium text-destructive">
+                <ShieldAlert className="h-4 w-4" /> Danger zone
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Permanently removes every automation record and task from the shared database. User accounts,
+                permissions, option lists and the administration log are kept.
+              </p>
+              <Button variant="outline" size="sm" className="mt-3 border-destructive/40 text-destructive" onClick={() => setEraseOpen(true)}>
+                <Trash2 className="h-4 w-4" /> Erase all data
+              </Button>
             </div>
-            <Switch checked={s.autoBackup} onCheckedChange={(v) => actions.setSettings({ autoBackup: v })} />
-          </div>
-          <div className="mt-3 grid grid-cols-2 gap-3">
-            <div>
-              <Label>Frequency</Label>
-              <Select value={s.backupFrequency} onValueChange={(v) => actions.setSettings({ backupFrequency: v as "Daily" | "Weekly" })}>
-                <SelectTrigger className="mt-1 h-9"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Daily">Daily</SelectItem>
-                  <SelectItem value="Weekly">Weekly</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div>
-              <Label htmlFor="ret">Restore points kept</Label>
-              <Input
-                id="ret"
-                className="mt-1 h-9"
-                value={String(s.backupRetention)}
-                onChange={(e) => actions.setSettings({ backupRetention: Math.max(1, Number(e.target.value) || 7) })}
-              />
-            </div>
-          </div>
-          <Button
-            className="mt-3"
-            onClick={() => { actions.createBackup(user); toast.success("Restore point created"); }}
-          >
-            Create restore point now
-          </Button>
-
-          <div className="mt-4 max-h-60 overflow-auto rounded-md border border-border">
-            <table className="w-full text-sm">
-              <thead className="sticky top-0 bg-muted/80 text-left text-muted-foreground">
-                <tr>
-                  {["Created", "By", "Records", "Size", ""].map((h) => (
-                    <th key={h} className="px-3 py-2 font-medium">{h}</th>
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {data.backups.map((b) => (
-                  <tr key={b.id} className="border-t border-border/70">
-                    <td className="px-3 py-2">{new Date(b.createdAt).toLocaleString()}</td>
-                    <td className="px-3 py-2">{b.createdBy}</td>
-                    <td className="px-3 py-2 tabular-nums">{b.records}</td>
-                    <td className="px-3 py-2 tabular-nums">{b.sizeKb} KB</td>
-                    <td className="px-3 py-2 text-right">
-                      <Button
-                        size="sm"
-                        variant="secondary"
-                        onClick={() => { actions.restoreBackup(b.id, user); toast.success("Portfolio restored"); }}
-                      >
-                        Restore
-                      </Button>
-                      <Button size="sm" variant="ghost" onClick={() => actions.deleteBackup(b.id)}>
-                        <X className="h-3.5 w-3.5" />
-                      </Button>
-                    </td>
-                  </tr>
-                ))}
-                {data.backups.length === 0 ? (
-                  <tr><td colSpan={5} className="px-3 py-6 text-center text-muted-foreground">No restore points yet.</td></tr>
-                ) : null}
-              </tbody>
-            </table>
-          </div>
+          ) : null}
         </section>
       </div>
+
+      <Dialog open={eraseOpen} onOpenChange={(o) => { setEraseOpen(o); if (!o) setEraseConfirm(""); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Erase all portfolio data</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            This deletes all {data.automations.length} automation record(s) and {data.tasks.length} task(s) from the
+            shared database for everyone. This cannot be undone. Type <b>ADMIN</b> to confirm.
+          </p>
+          <div>
+            <Label htmlFor="erase">Confirmation</Label>
+            <Input id="erase" className="mt-1" value={eraseConfirm} onChange={(e) => setEraseConfirm(e.target.value)} placeholder="ADMIN" />
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button variant="secondary" onClick={() => setEraseOpen(false)}>Cancel</Button>
+            <Button
+              variant="destructive"
+              disabled={eraseConfirm !== "ADMIN"}
+              onClick={() => {
+                actions.eraseAllData(user);
+                setEraseOpen(false);
+                setEraseConfirm("");
+                toast.success("All portfolio data erased");
+              }}
+            >
+              Erase everything
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <div className="mt-4 grid gap-4">
         <ImportCenter user={user} />
@@ -284,8 +255,7 @@ function SettingsPage() {
           <p className="mt-4 text-lg font-medium">{user}</p>
           <p className="font-mono text-xs text-muted-foreground">{account?.username} · {account?.role}</p>
           <p className="mt-2 text-xs text-muted-foreground">
-            {data.automations.length} records stored · {data.accounts.length} user account(s) · Mode:{" "}
-            {s.storageMode === "shared" ? "Shared Workspace" : "Local Workspace"}
+            {data.automations.length} records stored · {data.accounts.filter((a) => !a.deleted).length} active user account(s)
           </p>
         </section>
 

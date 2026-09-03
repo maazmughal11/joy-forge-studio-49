@@ -2,26 +2,24 @@
  * Repository contracts for every persistent entity in the application.
  *
  * UI/business code MUST depend only on these interfaces — never on
- * localStorage, IndexedDB, SQLite, the filesystem, or any network client.
+ * localStorage, the filesystem, the network share, or any client library.
  *
- * Return types use `MaybePromise` so that a synchronous provider (the current
- * local provider) and asynchronous providers (Electron SQLite over IPC, REST /
- * SQL Server, SharePoint Lists, PostgreSQL) can both satisfy the same contract.
+ * Return types use `MaybePromise` so a synchronous read model and an
+ * asynchronous shared-workspace writer can satisfy the same contract.
  */
 
 import type {
   AdminLogEntry,
   Approval,
   Automation,
-  BackupMeta,
   CommentRecord,
   DocRecord,
   FieldValue,
-  Message,
   OptionLists,
   Role,
   Settings,
   Stage,
+  TaskRecord,
   UserAccount,
   WeeklyUpdate,
 } from "@/domain/models";
@@ -54,6 +52,17 @@ export type NewUserAccount = {
   permissions?: string[];
 };
 
+export type NewTask = {
+  title: string;
+  description?: string;
+  assignedTo: string;
+  assignedBy: string;
+  recordId?: string;
+  recordLabel?: string;
+  priority?: TaskRecord["priority"];
+  dueDate?: string;
+};
+
 /* ------------------------------------------------------------------ */
 
 export interface AutomationRepository {
@@ -64,7 +73,7 @@ export interface AutomationRepository {
   updateScoring(id: string, key: keyof Automation["scoring"], value: number, actor: string): MaybePromise<void>;
   setStage(id: string, stage: Stage, actor: string): MaybePromise<void>;
   moveToProject(id: string, actor: string): MaybePromise<void>;
-  deleteAutomation(id: string): MaybePromise<void>;
+  deleteAutomation(id: string, actor: string): MaybePromise<void>;
   importAutomations(rows: Partial<Automation>[], actor: string, source: string): MaybePromise<number>;
   updateImportedAutomation(id: string, data: Record<string, FieldValue>, actor: string, source: string): MaybePromise<void>;
 }
@@ -72,6 +81,8 @@ export interface AutomationRepository {
 export interface WeeklyUpdateRepository {
   getWeeklyUpdates(automationId?: string): MaybePromise<(WeeklyUpdate & { automationId: string })[]>;
   createWeeklyUpdate(automationId: string, update: NewWeeklyUpdate, actor: string): MaybePromise<void>;
+  /** Per-user read state, so one reader does not clear the flag for the team. */
+  markRead(automationId: string, updateId: string, actor: string): MaybePromise<void>;
 }
 
 export interface ApprovalRepository {
@@ -114,24 +125,16 @@ export interface UserRepository {
     auditAction?: string,
     detail?: string,
   ): MaybePromise<void>;
+  /** Soft-delete: the person's historical records and audit trail are kept. */
+  deleteUser(id: string, actor: string): MaybePromise<void>;
   recordLogin(id: string): MaybePromise<void>;
 }
 
-export type NewMessage = {
-  from: string;
-  to: string;
-  subject: string;
-  body: string;
-  recordId?: string;
-  recordLabel?: string;
-};
-
-export interface MessageRepository {
-  getMessages(): MaybePromise<Message[]>;
-  sendMessage(input: NewMessage): MaybePromise<Message>;
-  markMessageRead(id: string, read?: boolean): MaybePromise<void>;
-  resolveMessage(id: string, resolved?: boolean): MaybePromise<void>;
-  deleteMessage(id: string): MaybePromise<void>;
+export interface TaskRepository {
+  getTasks(assignedTo?: string): MaybePromise<TaskRecord[]>;
+  createTask(input: NewTask): MaybePromise<TaskRecord>;
+  updateTask(id: string, patch: Partial<TaskRecord>): MaybePromise<void>;
+  deleteTask(id: string, actor: string): MaybePromise<void>;
 }
 
 export interface ReferenceDataRepository {
@@ -141,20 +144,18 @@ export interface ReferenceDataRepository {
   updateSettings(patch: Partial<Settings>): MaybePromise<void>;
 }
 
-export interface BackupRepository {
-  getBackups(): MaybePromise<BackupMeta[]>;
-  createBackup(actor: string, reason?: string): MaybePromise<BackupMeta>;
-  restoreBackup(backupId: string, actor: string): MaybePromise<void>;
-  deleteBackup(backupId: string): MaybePromise<void>;
+export interface WorkspaceRepository {
+  /** Pull the authoritative shared document and merge remote changes in. */
+  sync(): MaybePromise<unknown>;
   exportJson(): MaybePromise<string>;
   importJson(raw: string): MaybePromise<void>;
-  resetToSeed(): MaybePromise<void>;
+  /** Administrator-only destructive reset of operational data. */
+  eraseAllData(actor: string): MaybePromise<void>;
 }
 
 /**
  * A storage provider bundles one implementation of every repository plus the
- * lifecycle hooks the application needs (hydration, schema migrations and a
- * reactive read model).
+ * lifecycle hooks the application needs (hydration and a reactive read model).
  */
 export interface StorageProvider {
   readonly id: string;
@@ -169,9 +170,9 @@ export interface StorageProvider {
   documents: DocumentRepository;
   audit: AuditRepository;
   users: UserRepository;
-  messages: MessageRepository;
+  tasks: TaskRepository;
   referenceData: ReferenceDataRepository;
-  backups: BackupRepository;
+  workspace: WorkspaceRepository;
 
   /** Open/prepare the underlying store and run pending migrations. */
   initialize(): MaybePromise<void>;

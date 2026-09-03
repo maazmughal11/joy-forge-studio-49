@@ -39,6 +39,8 @@ export type WeeklyUpdate = {
   nextSteps?: string;
   blockers?: string;
   decisions?: string;
+  /** Display names of users who have already read this update. */
+  readBy?: string[];
 };
 
 export type ApprovalStatus = "Draft" | "Pending" | "Approved" | "Rejected" | "Cancelled" | "Not Required";
@@ -84,6 +86,8 @@ export type Automation = {
   createdDate: string;
   modifiedBy: string;
   modifiedDate: string;
+  /** Monotonic record revision, used for stale-write conflict detection. */
+  rev?: number;
   history: HistoryEntry[];
   documents: DocRecord[];
   comments: CommentRecord[];
@@ -95,14 +99,31 @@ export type OptionLists = Record<string, string[]>;
 
 export type StorageMode = "local" | "shared";
 
-export type BackupMeta = {
+export type TaskStatus = "Not Started" | "In Progress" | "Completed";
+export type TaskPriority = "Low" | "Medium" | "High";
+
+export type TaskRecord = {
   id: string;
-  createdAt: string;
-  createdBy: string;
-  records: number;
-  sizeKb: number;
-  reason: string;
-  payload: string;
+  title: string;
+  description?: string;
+  assignedTo: string;
+  assignedBy: string;
+  recordId?: string;
+  recordLabel?: string;
+  priority: TaskPriority;
+  status: TaskStatus;
+  dueDate?: string;
+  createdDate: string;
+  completedDate?: string;
+  modifiedDate: string;
+};
+
+/** Deletion marker so a delete on one workstation is not resurrected by a peer. */
+export type Tombstone = {
+  id: string;
+  entity: "automation" | "task";
+  deletedAt: string;
+  deletedBy: string;
 };
 
 export type AdminLogEntry = {
@@ -126,23 +147,12 @@ export type UserAccount = {
   role: Role;
   permissions: string[];
   active: boolean;
+  /** Soft-deleted accounts are preserved so historical references stay valid. */
+  deleted?: boolean;
+  deletedAt?: string;
   lastLogin?: string;
   createdDate: string;
   modifiedDate: string;
-};
-
-export type Message = {
-  id: string;
-  from: string;
-  to: string;
-  subject: string;
-  body: string;
-  /** Optional reference to an automation record. */
-  recordId?: string;
-  recordLabel?: string;
-  sentAt: string;
-  readAt?: string;
-  resolvedAt?: string;
 };
 
 export type Settings = {
@@ -151,9 +161,6 @@ export type Settings = {
   dataFolderPath: string;
   options: OptionLists;
   storageMode: StorageMode;
-  autoBackup: boolean;
-  backupFrequency: "Daily" | "Weekly";
-  backupRetention: number;
   lastWriteAt?: string;
   workspaceLock?: { user: string; acquiredAt: string } | null;
 };
@@ -162,9 +169,8 @@ export type AppData = {
   version: number;
   settings: Settings;
   automations: Automation[];
-  backups: BackupMeta[];
+  tasks: TaskRecord[];
+  tombstones: Tombstone[];
   adminLog: AdminLogEntry[];
   accounts: UserAccount[];
-  messages: Message[];
 };
-
