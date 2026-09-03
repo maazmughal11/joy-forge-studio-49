@@ -4,7 +4,6 @@ import {
   LayoutDashboard,
   Lightbulb,
   FolderKanban,
-  Boxes,
   BarChart3,
   UserCheck,
   Settings as SettingsIcon,
@@ -17,11 +16,12 @@ import {
   LogOut,
   UserRound,
   ShieldAlert,
-  MessageSquare,
-  Send,
+  RefreshCw,
+  Cloud,
+  CloudOff,
 } from "lucide-react";
 import logoUrl from "@/assets/smurfit-westrock-logo-light2.png";
-import { useAppData, actions, initializeData } from "@/data";
+import { useAppData, useConnection, actions, initializeData } from "@/data";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
@@ -31,19 +31,16 @@ import { AuthGate } from "@/components/LoginScreen";
 import { PERMISSION_LABELS } from "@/lib/auth";
 import { authService } from "@/services/auth-service";
 import { useAuth } from "@/hooks/useAuth";
-import { MessageComposer } from "@/components/MessageComposer";
 
 const NAV = [
   { to: "/", label: "Home", icon: LayoutDashboard, permission: null },
   { to: "/portfolio", label: "Portfolio", icon: Table2, permission: "portfolio.view" },
   { to: "/ideas", label: "Idea Tracking", icon: Lightbulb, permission: "ideas.view" },
   { to: "/projects", label: "Project Tracking", icon: FolderKanban, permission: "projects.view" },
-  { to: "/production", label: "Production Library", icon: Boxes, permission: "production.view" },
   { to: "/approvals", label: "Approvals", icon: Stamp, permission: "approvals.view" },
   { to: "/weekly-updates", label: "Weekly Updates", icon: CalendarClock, permission: "updates.view" },
   { to: "/reports", label: "Reports", icon: BarChart3, permission: "reports.view" },
   { to: "/my-work", label: "My Work", icon: UserCheck, permission: null },
-  { to: "/messages", label: "Messages", icon: MessageSquare, permission: null },
   { to: "/settings", label: "Settings", icon: SettingsIcon, permission: "settings.manage" },
 ] as const;
 
@@ -65,15 +62,23 @@ export function AppShell(props: { title: string; subtitle?: string; actions?: Re
 
 function Shell({ title, subtitle, actions: pageActions, requires, children }: { title: string; subtitle?: string; actions?: ReactNode; requires?: string; children: ReactNode }) {
   const data = useAppData();
+  const connection = useConnection();
   const { account, can } = useAuth();
   const navigate = useNavigate();
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   const [searchOpen, setSearchOpen] = useState(false);
   const [profileOpen, setProfileOpen] = useState(false);
   const [profileDialog, setProfileDialog] = useState(false);
-  const [composeOpen, setComposeOpen] = useState(false);
-  const currentUserName = account?.displayName ?? data.settings.currentUser;
-  const unreadMessages = (data.messages ?? []).filter((m) => m.to === currentUserName && !m.readAt).length;
+  const [syncing, setSyncing] = useState(false);
+
+  const runSync = async () => {
+    setSyncing(true);
+    try {
+      await actions.sync();
+    } finally {
+      setSyncing(false);
+    }
+  };
 
 
   useEffect(() => {
@@ -148,21 +153,26 @@ function Shell({ title, subtitle, actions: pageActions, requires, children }: { 
               <kbd className="ml-auto rounded border border-border px-1.5 text-[10px]">⌘K</kbd>
             </button>
             <div className="ml-auto flex items-center gap-2">
-              <Button variant="outline" size="sm" onClick={() => setComposeOpen(true)} title="Send a message">
-                <Send className="h-4 w-4" /> Message
-              </Button>
-              <Link
-                to="/messages"
-                title="Messages"
-                className="relative inline-flex h-9 w-9 items-center justify-center rounded-md border border-border bg-card text-muted-foreground transition-colors hover:border-ring hover:text-foreground"
+              <button
+                onClick={() => void runSync()}
+                title={`Shared database: ${connection.status}${connection.lastSyncedAt ? ` · last synced ${new Date(connection.lastSyncedAt).toLocaleTimeString()}` : ""}`}
+                className={cn(
+                  "inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[11px] transition-colors",
+                  connection.status === "offline"
+                    ? "border-destructive/40 bg-destructive/10 text-destructive"
+                    : "border-border bg-card text-muted-foreground hover:border-ring",
+                )}
               >
-                <MessageSquare className="h-4 w-4" />
-                {unreadMessages > 0 ? (
-                  <span className="absolute -right-1.5 -top-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-semibold text-primary-foreground">
-                    {unreadMessages}
-                  </span>
-                ) : null}
-              </Link>
+                {connection.status === "offline" ? <CloudOff className="h-3.5 w-3.5" /> : <Cloud className="h-3.5 w-3.5 text-primary" />}
+                <span className="hidden sm:inline">
+                  {connection.status === "offline"
+                    ? "Disconnected"
+                    : connection.lastSyncedAt
+                      ? `Synced ${new Date(connection.lastSyncedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
+                      : "Connecting…"}
+                </span>
+                <RefreshCw className={cn("h-3.5 w-3.5", (syncing || connection.status === "syncing") && "animate-spin")} />
+              </button>
               {can("settings.manage") ? (
                 <Link
                   to="/settings"
@@ -170,7 +180,7 @@ function Shell({ title, subtitle, actions: pageActions, requires, children }: { 
                   className="hidden items-center gap-1.5 rounded-full border border-border bg-card px-2.5 py-1 text-[11px] text-muted-foreground hover:border-ring lg:inline-flex"
                 >
                   <Database className="h-3.5 w-3.5 text-primary" />
-                  {data.settings.storageMode === "shared" ? "Connected — Shared Workspace" : "Local Workspace"}
+                  Shared workspace
                 </Link>
               ) : null}
               <Popover open={profileOpen} onOpenChange={setProfileOpen}>
@@ -241,8 +251,6 @@ function Shell({ title, subtitle, actions: pageActions, requires, children }: { 
           )}
         </main>
       </div>
-
-      <MessageComposer open={composeOpen} onOpenChange={setComposeOpen} />
 
       <CommandDialog open={searchOpen} onOpenChange={setSearchOpen}>
         <CommandInput placeholder="Search ID, legacy code, name, owner, SME, analyst, division, technology, PAS #…" />
