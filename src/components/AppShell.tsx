@@ -94,11 +94,7 @@ function Shell({ title, subtitle, actions: pageActions, requires, children }: { 
 
   // Global search obeys the same authorization rules as normal navigation.
   const searchableRecords = data.automations.filter((a) =>
-    a.stage === "idea"
-      ? can("ideas.view")
-      : a.stage === "production"
-        ? can("production.view")
-        : can("projects.view"),
+    a.stage === "idea" ? can("ideas.view") : can("projects.view"),
   );
 
   return (
