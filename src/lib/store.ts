@@ -63,6 +63,10 @@ export type WorkspaceConnection = {
   lastUpdatedBy: string | null;
   rev: number;
   pendingWrite: boolean;
+  /** True once the shared database has been read successfully at least once. */
+  everSynced: boolean;
+  /** Offline but showing the last shared snapshot: browse only, no saving. */
+  readOnly: boolean;
 };
 
 let connection: WorkspaceConnection = {
@@ -75,17 +79,32 @@ let connection: WorkspaceConnection = {
   lastUpdatedBy: null,
   rev: 0,
   pendingWrite: false,
+  everSynced: false,
+  readOnly: false,
 };
 
 export const getConnection = () => connection;
 
 function setConnection(patch: Partial<WorkspaceConnection>) {
-  connection = { ...connection, ...patch };
+  const next = { ...connection, ...patch };
+  connection = { ...next, readOnly: next.shared && next.status === "offline" };
   emit();
 }
 
-/** True while the authoritative shared database cannot be reached. */
+/**
+ * True while the authoritative shared database cannot be reached (for example
+ * a remote user who is not on the corporate VPN). Every write is refused in
+ * this state — we never create a second, local production database.
+ */
 export const isReadOnly = () => connection.shared && connection.status === "offline";
+
+export const OFFLINE_MESSAGE =
+  "The RPAHUB shared database cannot currently be reached. If you are working remotely, connect to the company VPN and click Retry Connection.";
+
+/** Manual "Retry Connection" / "Sync" action. */
+export async function retryConnection() {
+  return syncNow();
+}
 
 /* ------------------------------------------------------------------ */
 /* Document normalisation & merging                                    */
@@ -252,6 +271,7 @@ async function writeShared(desktop: Bridge): Promise<void> {
 }
 
 function writeNow() {
+  if (isReadOnly()) return; // offline: never persist production data locally
   if (persistTimer) {
     clearTimeout(persistTimer);
     persistTimer = null;
@@ -340,6 +360,8 @@ export async function syncNow(): Promise<WorkspaceConnection> {
       lastUpdatedAt: res.updatedAt ?? null,
       lastUpdatedBy: res.updatedBy ?? null,
       lastSyncedAt: new Date().toISOString(),
+      everSynced: true,
+      readOnly: false,
     };
     emit();
     return connection;
@@ -388,6 +410,14 @@ export function getState(): AppData {
 const ADMIN_LOG_LIMIT = 2000;
 
 function setState(next: AppData) {
+  if (isReadOnly()) {
+    // Offline: refuse the write, keep the cached snapshot read-only.
+    setConnection({ error: OFFLINE_MESSAGE });
+    void import("sonner").then(({ toast }) =>
+      toast.error("Shared workspace unavailable", { description: OFFLINE_MESSAGE, id: "workspace-offline" }),
+    );
+    return;
+  }
   const adminLog = next.adminLog && next.adminLog.length > ADMIN_LOG_LIMIT
     ? next.adminLog.slice(0, ADMIN_LOG_LIMIT)
     : next.adminLog;

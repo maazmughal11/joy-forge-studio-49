@@ -35,7 +35,42 @@ const paths = () => {
   return { dir, db: path.join(dir, "portfolio.db"), lock: path.join(dir, "portfolio.lock") };
 };
 
+/**
+ * Is the company network share reachable at all?
+ *
+ * Remote users can only see \\westrock.com\... while the corporate VPN is up.
+ * We probe the parent share BEFORE creating anything, so a disconnected client
+ * can never silently create a second, local "production" database.
+ */
+function reachable() {
+  const dir = resolveDataDir();
+  if (process.env.RPAHUB_DATA_DIR) return { ok: true };
+  const root = path.parse(dir).root && dir.startsWith("\\\\") ? SHARED_ROOT : path.dirname(dir);
+  try {
+    fs.accessSync(root, fs.constants.R_OK);
+    return { ok: true };
+  } catch {
+    try {
+      fs.accessSync(dir, fs.constants.R_OK);
+      return { ok: true };
+    } catch (error) {
+      return {
+        ok: false,
+        offline: true,
+        error:
+          "The RPAHUB shared database cannot currently be reached. If you are working remotely, connect to the company VPN and try again.",
+      };
+    }
+  }
+}
+
 function ensureDir() {
+  const probe = reachable();
+  if (!probe.ok) {
+    const err = new Error(probe.error);
+    err.offline = true;
+    throw err;
+  }
   const { dir } = paths();
   fs.mkdirSync(dir, { recursive: true });
   return dir;
@@ -115,7 +150,7 @@ function status() {
       updatedAt: stat ? new Date(stat.mtimeMs).toISOString() : null,
     };
   } catch (error) {
-    return { ok: false, connected: false, path: dir, file: db, error: error.message };
+    return { ok: false, connected: false, offline: true, path: dir, file: db, error: error.message };
   }
 }
 
@@ -125,7 +160,7 @@ function read() {
     const envelope = migrate(readEnvelope());
     return { ok: true, connected: true, path: paths().dir, ...envelope };
   } catch (error) {
-    return { ok: false, connected: false, path: paths().dir, error: error.message };
+    return { ok: false, connected: false, offline: true, path: paths().dir, error: error.message };
   }
 }
 
@@ -133,7 +168,7 @@ async function write({ doc, baseRev, user }) {
   try {
     ensureDir();
   } catch (error) {
-    return { ok: false, connected: false, error: error.message };
+    return { ok: false, connected: false, offline: true, error: error.message };
   }
   const locked = await acquireLock();
   if (!locked) return { ok: false, connected: true, error: "The shared database is busy. Please retry." };
@@ -157,10 +192,10 @@ async function write({ doc, baseRev, user }) {
     fs.renameSync(tmp, db);
     return { ok: true, connected: true, rev: next.rev, updatedAt: next.updatedAt, updatedBy: next.updatedBy };
   } catch (error) {
-    return { ok: false, connected: false, error: error.message };
+    return { ok: false, connected: false, offline: true, error: error.message };
   } finally {
     releaseLock();
   }
 }
 
-module.exports = { status, read, write, SHARED_ROOT, DATA_DIR, DB_FILE, LOCK_FILE, SCHEMA_VERSION };
+module.exports = { status, read, write, reachable, SHARED_ROOT, DATA_DIR, DB_FILE, LOCK_FILE, SCHEMA_VERSION };
