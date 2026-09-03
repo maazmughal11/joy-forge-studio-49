@@ -1,6 +1,6 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
-import { ArrowRight, ExternalLink, Plus, Trash2, AlertTriangle } from "lucide-react";
+import { ArrowRight, ExternalLink, Plus, Trash2, AlertTriangle, UserPlus } from "lucide-react";
 import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
 import { useAuth } from "@/hooks/useAuth";
@@ -18,6 +18,8 @@ import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Area, CartesianGrid, ComposedChart, Line, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { AssignTaskDialog } from "@/components/AssignTaskDialog";
 import type { Automation, Scoring } from "@/domain/models";
 
 export const Route = createFileRoute("/record/$id")({
@@ -57,6 +59,8 @@ function RecordPage() {
   const record = useAutomation(id);
   const navigate = useNavigate();
   const { user, can, account } = useAuth();
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [assignOpen, setAssignOpen] = useState(false);
 
   if (!record) {
     return (
@@ -96,20 +100,48 @@ function RecordPage() {
               Move to Project Tracking <ArrowRight className="h-4 w-4" />
             </Button>
           ) : null}
-          <Button
-            variant="outline"
-            onClick={() => {
-              actions.deleteRecord(record.id);
-              toast.success("Record deleted");
-              navigate({ to: "/ideas" });
-            }}
-          >
+          <Button variant="secondary" onClick={() => setAssignOpen(true)}>
+            <UserPlus className="h-4 w-4" /> Assign Task
+          </Button>
+          <Button variant="outline" onClick={() => setDeleteOpen(true)}>
             <Trash2 className="h-4 w-4" /> Delete
           </Button>
         </>
       }
     >
+      <AssignTaskDialog open={assignOpen} onOpenChange={setAssignOpen} assignedBy={user} defaultRecordId={record.id} />
+
+      <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Delete this record?</DialogTitle>
+          </DialogHeader>
+          <p className="text-sm text-muted-foreground">
+            <b>{nameOf(record)}</b> and its weekly updates, approvals, comments, documents and history will be removed
+            from the shared database for everyone. This cannot be undone.
+          </p>
+          <div className="flex justify-end gap-2">
+            <Button variant="secondary" onClick={() => setDeleteOpen(false)}>Cancel</Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                actions.deleteRecord(record.id, user);
+                setDeleteOpen(false);
+                toast.success("Record deleted");
+                navigate({ to: "/ideas" });
+              }}
+            >
+              <Trash2 className="h-4 w-4" /> Delete record
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       <div className="card-surface mb-4 p-4">
+        <p className="mb-3 text-xs text-muted-foreground">
+          Created by {record.createdBy} on {new Date(record.createdDate).toLocaleString()} · Last modified by{" "}
+          {record.modifiedBy} on {new Date(record.modifiedDate).toLocaleString()}
+        </p>
         <StageProgress record={record} />
         {record.stage === "idea" && blockers.length ? (
           <div className="mt-4 flex items-start gap-2 rounded-md border border-warning/50 bg-warning/15 p-3 text-xs text-warning-foreground">

@@ -8,7 +8,6 @@ export const PERMISSION_GROUPS: { group: string; items: { key: string; label: st
     group: "Portfolio",
     items: [
       { key: "portfolio.view", label: "View Portfolio" },
-      { key: "production.view", label: "View Production Library" },
     ],
   },
   {
@@ -74,7 +73,6 @@ export const PERMISSION_LABELS: Record<string, string> = Object.fromEntries(
 
 const VIEWER: string[] = [
   "portfolio.view",
-  "production.view",
   "ideas.view",
   "projects.view",
   "updates.view",

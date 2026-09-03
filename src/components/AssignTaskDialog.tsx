@@ -58,8 +58,14 @@ export function AssignTaskDialog({
   };
 
   const submit = () => {
-    if (!assignee) return toast.error("Choose who the task is for");
-    if (!title.trim()) return toast.error("Give the task a title");
+    if (!assignee) {
+      toast.error("Choose who the task is for");
+      return;
+    }
+    if (!title.trim()) {
+      toast.error("Give the task a title");
+      return;
+    }
     const record = data.automations.find((a) => a.id === recordId);
     actions.createTask({
       title: title.trim(),

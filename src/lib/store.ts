@@ -608,7 +608,11 @@ export const actions = {
       ...state,
       automations: state.automations.filter((a) => a.id !== id),
       // Tasks linked to the deleted record lose only the link, not their history.
-      tasks: state.tasks.map((t) => (t.recordId === id ? { ...t, recordId: undefined, modifiedDate: new Date().toISOString() } : t)),
+      tasks: state.tasks.map((t) => {
+        if (t.recordId !== id) return t;
+        const { recordId: _dropped, ...rest } = t;
+        return { ...rest, modifiedDate: new Date().toISOString() };
+      }),
       tombstones: [...state.tombstones, tombstone("automation", id, user)],
       adminLog: [
         adminEntry(user, "Record deleted", String(record?.data['opportunityName'] ?? id)),

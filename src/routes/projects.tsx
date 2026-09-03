@@ -29,7 +29,7 @@ const VIEWS = [
   { key: "active", label: "Active Projects" },
   { key: "mine", label: "My Projects" },
   { key: "hold", label: "On Hold" },
-  { key: "missing", label: "Missing Weekly Update" },
+  { key: "missing", label: "Not Updated Recently" },
   { key: "approaching", label: "Approaching Production" },
   { key: "recent", label: "Recently Updated" },
 ] as const;

@@ -40,10 +40,10 @@ export const Route = createFileRoute("/weekly-updates")({
       { title: "Weekly Updates | Automation CoE Portfolio Tracker" },
       {
         name: "description",
-        content: "Portfolio-wide weekly status reporting: RAG health, percent complete, blockers, next steps and update compliance for every active automation project.",
+        content: "Portfolio-wide weekly status reporting: RAG health, percent complete, blockers and next steps for every active automation project.",
       },
       { property: "og:title", content: "Weekly Updates | Automation CoE" },
-      { property: "og:description", content: "Weekly project status log with missing-update tracking and health trends." },
+      { property: "og:description", content: "Weekly project status log with health trends and per-user unread updates." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],
@@ -131,7 +131,7 @@ function WeeklyUpdates() {
   const exportView = () =>
     downloadCsv(
       `weekly-updates-${view}-${new Date().toISOString().slice(0, 10)}`,
-      ["Automation ID", "Project Name", "Project Status", "Health", "% Complete", "Update Date", "Submitted By", "Progress Summary", "Key Accomplishments", "Next Steps", "Blockers / Risks", "Decisions Needed", "Last Update Age (days)", "Update Compliance"],
+      ["Automation ID", "Project Name", "Project Status", "Health", "% Complete", "Update Date", "Submitted By", "Progress Summary", "Key Accomplishments", "Next Steps", "Blockers / Risks", "Decisions Needed", "Last Update Age (days)", "Update Freshness"],
       rows.map((a) => {
         const u = lastUpdate(a);
         return [
