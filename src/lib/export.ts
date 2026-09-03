@@ -42,9 +42,18 @@ const desktop = (): DesktopBridge | null =>
 
 /** Executive-layout report document, shared by browser print and Electron PDF. */
 function reportHtml(opts: { title: string; filters: string[]; kpis: { label: string; value: string }[]; body: string }) {
-  const styles = Array.from(document.querySelectorAll('style, link[rel="stylesheet"]'))
-    .map((n) => n.outerHTML)
+  // Inline the actual CSS text: the Electron print window renders from a
+  // data: URL, where relative <link href="./assets/..."> would not resolve.
+  const css = Array.from(document.styleSheets)
+    .map((sheet) => {
+      try {
+        return Array.from(sheet.cssRules).map((r) => r.cssText).join("\n");
+      } catch {
+        return "";
+      }
+    })
     .join("\n");
+  const styles = `<style>${css}</style>`;
   return `<!doctype html><html><head><meta charset="utf-8" /><title>${opts.title}</title>${styles}
   <style>@page{size:landscape;margin:14mm} body{background:#fff;padding:0} .pdf-head{margin-bottom:16px}</style>
   </head><body class="p-6">
