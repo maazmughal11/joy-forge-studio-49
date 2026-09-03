@@ -12,10 +12,8 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ApprovalsRouteImport } from './routes/approvals'
 import { Route as IdeasRouteImport } from './routes/ideas'
-import { Route as MessagesRouteImport } from './routes/messages'
 import { Route as MyWorkRouteImport } from './routes/my-work'
 import { Route as PortfolioRouteImport } from './routes/portfolio'
-import { Route as ProductionRouteImport } from './routes/production'
 import { Route as ProjectsRouteImport } from './routes/projects'
 import { Route as ReportsRouteImport } from './routes/reports'
 import { Route as SettingsRouteImport } from './routes/settings'
@@ -37,11 +35,6 @@ const IdeasRoute = IdeasRouteImport.update({
   path: '/ideas',
   getParentRoute: () => rootRouteImport,
 } as any)
-const MessagesRoute = MessagesRouteImport.update({
-  id: '/messages',
-  path: '/messages',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const MyWorkRoute = MyWorkRouteImport.update({
   id: '/my-work',
   path: '/my-work',
@@ -50,11 +43,6 @@ const MyWorkRoute = MyWorkRouteImport.update({
 const PortfolioRoute = PortfolioRouteImport.update({
   id: '/portfolio',
   path: '/portfolio',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ProductionRoute = ProductionRouteImport.update({
-  id: '/production',
-  path: '/production',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ProjectsRoute = ProjectsRouteImport.update({
@@ -87,10 +75,8 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/approvals': typeof ApprovalsRoute
   '/ideas': typeof IdeasRoute
-  '/messages': typeof MessagesRoute
   '/my-work': typeof MyWorkRoute
   '/portfolio': typeof PortfolioRoute
-  '/production': typeof ProductionRoute
   '/projects': typeof ProjectsRoute
   '/reports': typeof ReportsRoute
   '/settings': typeof SettingsRoute
@@ -101,10 +87,8 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/approvals': typeof ApprovalsRoute
   '/ideas': typeof IdeasRoute
-  '/messages': typeof MessagesRoute
   '/my-work': typeof MyWorkRoute
   '/portfolio': typeof PortfolioRoute
-  '/production': typeof ProductionRoute
   '/projects': typeof ProjectsRoute
   '/reports': typeof ReportsRoute
   '/settings': typeof SettingsRoute
@@ -116,10 +100,8 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/approvals': typeof ApprovalsRoute
   '/ideas': typeof IdeasRoute
-  '/messages': typeof MessagesRoute
   '/my-work': typeof MyWorkRoute
   '/portfolio': typeof PortfolioRoute
-  '/production': typeof ProductionRoute
   '/projects': typeof ProjectsRoute
   '/reports': typeof ReportsRoute
   '/settings': typeof SettingsRoute
@@ -132,10 +114,8 @@ export interface FileRouteTypes {
     | '/'
     | '/approvals'
     | '/ideas'
-    | '/messages'
     | '/my-work'
     | '/portfolio'
-    | '/production'
     | '/projects'
     | '/reports'
     | '/settings'
@@ -146,10 +126,8 @@ export interface FileRouteTypes {
     | '/'
     | '/approvals'
     | '/ideas'
-    | '/messages'
     | '/my-work'
     | '/portfolio'
-    | '/production'
     | '/projects'
     | '/reports'
     | '/settings'
@@ -160,10 +138,8 @@ export interface FileRouteTypes {
     | '/'
     | '/approvals'
     | '/ideas'
-    | '/messages'
     | '/my-work'
     | '/portfolio'
-    | '/production'
     | '/projects'
     | '/reports'
     | '/settings'
@@ -175,10 +151,8 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ApprovalsRoute: typeof ApprovalsRoute
   IdeasRoute: typeof IdeasRoute
-  MessagesRoute: typeof MessagesRoute
   MyWorkRoute: typeof MyWorkRoute
   PortfolioRoute: typeof PortfolioRoute
-  ProductionRoute: typeof ProductionRoute
   ProjectsRoute: typeof ProjectsRoute
   ReportsRoute: typeof ReportsRoute
   SettingsRoute: typeof SettingsRoute
@@ -209,13 +183,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IdeasRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/messages': {
-      id: '/messages'
-      path: '/messages'
-      fullPath: '/messages'
-      preLoaderRoute: typeof MessagesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/my-work': {
       id: '/my-work'
       path: '/my-work'
@@ -228,13 +195,6 @@ declare module '@tanstack/react-router' {
       path: '/portfolio'
       fullPath: '/portfolio'
       preLoaderRoute: typeof PortfolioRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/production': {
-      id: '/production'
-      path: '/production'
-      fullPath: '/production'
-      preLoaderRoute: typeof ProductionRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/projects': {
@@ -279,10 +239,8 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ApprovalsRoute: ApprovalsRoute,
   IdeasRoute: IdeasRoute,
-  MessagesRoute: MessagesRoute,
   MyWorkRoute: MyWorkRoute,
   PortfolioRoute: PortfolioRoute,
-  ProductionRoute: ProductionRoute,
   ProjectsRoute: ProjectsRoute,
   ReportsRoute: ReportsRoute,
   SettingsRoute: SettingsRoute,
