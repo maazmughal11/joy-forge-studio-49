@@ -255,8 +255,7 @@ function SettingsPage() {
           <p className="mt-4 text-lg font-medium">{user}</p>
           <p className="font-mono text-xs text-muted-foreground">{account?.username} · {account?.role}</p>
           <p className="mt-2 text-xs text-muted-foreground">
-            {data.automations.length} records stored · {data.accounts.length} user account(s) · Mode:{" "}
-            {s.storageMode === "shared" ? "Shared Workspace" : "Local Workspace"}
+            {data.automations.length} records stored · {data.accounts.filter((a) => !a.deleted).length} active user account(s)
           </p>
         </section>
 
