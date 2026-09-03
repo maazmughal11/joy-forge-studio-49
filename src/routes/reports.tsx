@@ -481,7 +481,7 @@ function Reports() {
               </Panel>
             </div>
             <section className="card-surface mt-4 overflow-x-auto">
-              <h2 className="border-b border-border px-4 py-3 text-sm font-semibold">Update compliance detail</h2>
+              <h2 className="border-b border-border px-4 py-3 text-sm font-semibold">Weekly update freshness</h2>
               <table className="w-full min-w-[720px] text-sm">
                 <thead>
                   <tr className="border-b border-border bg-muted/60 text-left text-muted-foreground">
