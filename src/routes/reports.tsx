@@ -266,7 +266,7 @@ function Reports() {
           <Button
             variant="outline"
             onClick={() =>
-              printReport({
+              void printReport({
                 title: `${tab} Report — Automation CoE Portfolio`,
                 filters: filterLabels,
                 kpis: kpis.slice(0, 6),
