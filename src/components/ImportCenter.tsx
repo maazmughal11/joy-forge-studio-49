@@ -171,7 +171,6 @@ export function ImportCenter({ user }: { user: string }) {
       setStep("columns");
       return;
     }
-    actions.createBackup(user, "Safety backup before import");
 
     const created: { stage: Stage; data: Record<string, FieldValue> }[] = [];
     const out: ResultRow[] = [];

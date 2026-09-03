@@ -6,7 +6,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { RecordTable, type Column } from "@/components/RecordTable";
 import { StatusBadge } from "@/components/StatusBadge";
 import { useAppData, actions } from "@/data";
-import { approachingProduction, lastUpdate, missingWeeklyUpdate, nameOf, onHold } from "@/lib/derive";
+import { approachingProduction, lastUpdate, staleWeeklyUpdate, nameOf, onHold } from "@/lib/derive";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -48,7 +48,7 @@ function Projects() {
   if (view === "active") records = records.filter((a) => a.stage === "project");
   if (view === "mine") records = records.filter((a) => [a.data['submittedBy'], a.data['businessAnalyst']].includes(user));
   if (view === "hold") records = records.filter(onHold);
-  if (view === "missing") records = records.filter(missingWeeklyUpdate);
+  if (view === "missing") records = records.filter(staleWeeklyUpdate);
   if (view === "approaching") records = records.filter(approachingProduction);
   if (view === "recent")
     records = records.filter((a) => Date.now() - new Date(a.modifiedDate).getTime() < 30 * 86400000);

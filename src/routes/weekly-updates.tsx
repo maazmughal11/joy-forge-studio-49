@@ -12,7 +12,7 @@ import {
   daysSinceUpdate,
   healthTrend,
   lastUpdate,
-  missingWeeklyUpdate,
+  staleWeeklyUpdate,
   nameOf,
   onHold,
   stageLabel,
@@ -81,7 +81,7 @@ function WeeklyUpdates() {
         out = tracked.filter((a) => daysSinceUpdate(a) <= 7);
         break;
       case "missing":
-        out = tracked.filter(missingWeeklyUpdate);
+        out = tracked.filter(staleWeeklyUpdate);
         break;
       case "risk":
         out = tracked.filter((a) => ["Red", "Amber"].includes(lastUpdate(a)?.rag ?? ""));
@@ -137,7 +137,7 @@ function WeeklyUpdates() {
           u?.blockers ?? "",
           u?.decisions ?? "",
           daysSinceUpdate(a) === 9999 ? "Never" : daysSinceUpdate(a),
-          missingWeeklyUpdate(a) ? "Missing Update" : "Current",
+          staleWeeklyUpdate(a) ? "Missing Update" : "Current",
         ];
       }),
     );
@@ -266,7 +266,7 @@ function WeeklyUpdates() {
                   <td className="max-w-64 truncate px-3 py-2.5 text-muted-foreground">{u?.blockers ?? "—"}</td>
                   <td className="px-3 py-2.5 tabular-nums">{age === 9999 ? "Never" : `${age}d`}</td>
                   <td className="px-3 py-2.5">
-                    {missingWeeklyUpdate(a) ? (
+                    {staleWeeklyUpdate(a) ? (
                       <StatusBadge value="Missing Update" className="border-destructive/30 bg-destructive/15 text-destructive" />
                     ) : (
                       <StatusBadge value="Current" className="border-success/30 bg-success/15 text-success" />
