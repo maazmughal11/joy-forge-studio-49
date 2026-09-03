@@ -125,7 +125,7 @@ export const actions = {
 export const hydrate = initializeData;
 
 /** Storage diagnostics and connection state for the admin UI. */
-export { getStorageHealth, flushPersist, getConnection, isReadOnly } from "@/lib/store";
+export { getStorageHealth, flushPersist, getConnection, isReadOnly, retryConnection, OFFLINE_MESSAGE } from "@/lib/store";
 export type { WorkspaceConnection, ConnectionStatus } from "@/lib/store";
 
 import { getConnection, type WorkspaceConnection } from "@/lib/store";
