@@ -411,8 +411,12 @@ const ADMIN_LOG_LIMIT = 2000;
 
 function setState(next: AppData) {
   if (isReadOnly()) {
+    // Offline: refuse the write, keep the cached snapshot read-only.
     setConnection({ error: OFFLINE_MESSAGE });
-    throw new Error(OFFLINE_MESSAGE);
+    void import("sonner").then(({ toast }) =>
+      toast.error("Shared workspace unavailable", { description: OFFLINE_MESSAGE, id: "workspace-offline" }),
+    );
+    return;
   }
   const adminLog = next.adminLog && next.adminLog.length > ADMIN_LOG_LIMIT
     ? next.adminLog.slice(0, ADMIN_LOG_LIMIT)
