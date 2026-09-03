@@ -19,9 +19,10 @@ import {
   RefreshCw,
   Cloud,
   CloudOff,
+  WifiOff,
 } from "lucide-react";
 import logoUrl from "@/assets/smurfit-westrock-logo-light2.png";
-import { useAppData, useConnection, actions, initializeData } from "@/data";
+import { useAppData, useConnection, actions, initializeData, retryConnection, OFFLINE_MESSAGE } from "@/data";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { CommandDialog, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
@@ -71,10 +72,13 @@ function Shell({ title, subtitle, actions: pageActions, requires, children }: { 
   const [profileDialog, setProfileDialog] = useState(false);
   const [syncing, setSyncing] = useState(false);
 
+  const offline = connection.shared && connection.status === "offline";
+  const cachedReadOnly = offline && connection.everSynced;
+
   const runSync = async () => {
     setSyncing(true);
     try {
-      await actions.sync();
+      await retryConnection();
     } finally {
       setSyncing(false);
     }
@@ -96,6 +100,23 @@ function Shell({ title, subtitle, actions: pageActions, requires, children }: { 
   const searchableRecords = data.automations.filter((a) =>
     a.stage === "idea" ? can("ideas.view") : can("projects.view"),
   );
+
+  if (offline && !connection.everSynced) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background p-6 text-foreground">
+        <div className="card-surface w-full max-w-lg p-8 text-center">
+          <WifiOff className="mx-auto h-9 w-9 text-destructive" />
+          <h1 className="mt-4 text-lg font-semibold tracking-tight">Shared Workspace Unavailable</h1>
+          <p className="mt-2 text-sm text-muted-foreground">{OFFLINE_MESSAGE}</p>
+          <p className="mt-2 font-mono text-[11px] text-muted-foreground">{connection.path}</p>
+          <Button className="mt-5" onClick={() => void runSync()} disabled={syncing || connection.status === "syncing"}>
+            <RefreshCw className={cn("h-4 w-4", (syncing || connection.status === "syncing") && "animate-spin")} />
+            Retry Connection
+          </Button>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen bg-background text-foreground">
@@ -162,7 +183,7 @@ function Shell({ title, subtitle, actions: pageActions, requires, children }: { 
                 {connection.status === "offline" ? <CloudOff className="h-3.5 w-3.5" /> : <Cloud className="h-3.5 w-3.5 text-primary" />}
                 <span className="hidden sm:inline">
                   {connection.status === "offline"
-                    ? "Disconnected"
+                    ? "Shared Workspace Unavailable"
                     : connection.lastSyncedAt
                       ? `Synced ${new Date(connection.lastSyncedAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`
                       : "Connecting…"}
@@ -230,9 +251,22 @@ function Shell({ title, subtitle, actions: pageActions, requires, children }: { 
               <h1 className="text-2xl font-semibold tracking-tight">{title}</h1>
               {subtitle ? <p className="text-sm text-muted-foreground">{subtitle}</p> : null}
             </div>
-            <div className="flex flex-wrap gap-2">{requires && !can(requires) ? null : pageActions}</div>
+            <div className={cn("flex flex-wrap gap-2", cachedReadOnly && "pointer-events-none opacity-50")}>
+              {requires && !can(requires) ? null : pageActions}
+            </div>
           </div>
         </header>
+        {cachedReadOnly ? (
+          <div className="flex flex-wrap items-center gap-3 border-b border-destructive/40 bg-destructive/10 px-6 py-2 text-xs text-destructive">
+            <WifiOff className="h-4 w-4" />
+            <span>
+              Shared Workspace Unavailable — showing cached, read-only data. Connect to the company VPN to resume editing.
+            </span>
+            <Button size="sm" variant="outline" className="ml-auto h-7" onClick={() => void runSync()} disabled={syncing}>
+              <RefreshCw className={cn("h-3.5 w-3.5", syncing && "animate-spin")} /> Retry Connection
+            </Button>
+          </div>
+        ) : null}
         <main className="flex-1 px-6 py-6">
           {requires && !can(requires) ? (
             <div className="card-surface mx-auto max-w-md p-8 text-center">
