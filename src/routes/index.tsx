@@ -5,7 +5,6 @@ import {
   BadgeCheck,
   FolderKanban,
   PauseCircle,
-  AlarmClock,
   Rocket,
   Plus,
   FileBarChart,
