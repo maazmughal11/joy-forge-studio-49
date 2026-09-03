@@ -1,26 +1,25 @@
 /**
- * Local storage provider.
+ * Workspace storage provider.
  *
- * This is ONE implementation of the repository contracts, backed by the
- * browser localStorage document that the application has always used. All of
- * its persistence details live in `src/lib/store.ts` (the store engine) and
- * are never touched by UI code.
+ * ONE implementation of the repository contracts. The persistence details —
+ * the shared RPAHUB network database in the desktop build, browser storage in
+ * the web preview — live in `src/lib/store.ts` and never leak into UI code.
  */
 
-import { actions as engine, getState, hydrate, subscribe } from "@/lib/store";
+import { actions as engine, getState, hydrate, subscribe, syncNow } from "@/lib/store";
 import type {
   ApprovalRepository,
   AuditRepository,
   AutomationQuery,
   AutomationRepository,
-  BackupRepository,
   CommentRepository,
   DocumentRepository,
-  MessageRepository,
   ReferenceDataRepository,
   StorageProvider,
+  TaskRepository,
   UserRepository,
   WeeklyUpdateRepository,
+  WorkspaceRepository,
 } from "@/data/repositories";
 import type { Automation, Stage } from "@/domain/models";
 import { CURRENT_SCHEMA_VERSION } from "@/data/config";
@@ -53,7 +52,7 @@ const automations: AutomationRepository = {
   updateScoring: (id, key, value, actor) => engine.setScoring(id, key, value, actor),
   setStage: (id, stage, actor) => engine.setStage(id, stage, actor),
   moveToProject: (id, actor) => engine.moveToProject(id, actor),
-  deleteAutomation: (id) => engine.deleteRecord(id),
+  deleteAutomation: (id, actor) => engine.deleteRecord(id, actor),
   importAutomations: (rows, actor, source) => engine.importRecords(rows, actor, source),
   updateImportedAutomation: (id, data, actor, source) => engine.updateImportedRecord(id, data, actor, source),
 };
@@ -64,6 +63,7 @@ const weeklyUpdates: WeeklyUpdateRepository = {
       .filter((a) => !automationId || a.id === automationId)
       .flatMap((a) => a.updates.map((u) => ({ ...u, automationId: a.id }))),
   createWeeklyUpdate: (automationId, update, actor) => engine.addUpdate(automationId, update, actor),
+  markRead: (automationId, updateId, actor) => engine.markUpdateRead(automationId, updateId, actor),
 };
 
 const approvals: ApprovalRepository = {
@@ -99,15 +99,16 @@ const users: UserRepository = {
     getState().accounts.find((a) => a.username.toLowerCase() === username.toLowerCase()),
   createUser: (input, actor) => engine.createAccount(input, actor),
   updateUser: (id, patch, actor, auditAction, detail) => engine.updateAccount(id, patch, actor, auditAction, detail),
+  deleteUser: (id, actor) => engine.deleteAccount(id, actor),
   recordLogin: (id) => engine.recordLogin(id),
 };
 
-const messages: MessageRepository = {
-  getMessages: () => getState().messages ?? [],
-  sendMessage: (input) => engine.sendMessage(input),
-  markMessageRead: (id, read) => engine.markMessageRead(id, read),
-  resolveMessage: (id, resolved) => engine.resolveMessage(id, resolved),
-  deleteMessage: (id) => engine.deleteMessage(id),
+const tasks: TaskRepository = {
+  getTasks: (assignedTo) =>
+    getState().tasks.filter((t) => !assignedTo || t.assignedTo === assignedTo),
+  createTask: (input) => engine.createTask(input),
+  updateTask: (id, patch) => engine.updateTask(id, patch),
+  deleteTask: (id, actor) => engine.deleteTask(id, actor),
 };
 
 const referenceData: ReferenceDataRepository = {
@@ -117,22 +118,19 @@ const referenceData: ReferenceDataRepository = {
   updateSettings: (patch) => engine.setSettings(patch),
 };
 
-const backups: BackupRepository = {
-  getBackups: () => getState().backups,
-  createBackup: (actor, reason) => engine.createBackup(actor, reason),
-  restoreBackup: (id, actor) => engine.restoreBackup(id, actor),
-  deleteBackup: (id) => engine.deleteBackup(id),
+const workspace: WorkspaceRepository = {
+  sync: () => syncNow(),
   exportJson: () => engine.exportJson(),
   importJson: (raw) => engine.importJson(raw),
-  resetToSeed: () => engine.resetToSeed(),
+  eraseAllData: (actor) => engine.eraseAllData(actor),
 };
 
 export const localStorageProvider: StorageProvider & {
   subscribe: typeof subscribe;
   getSnapshot: typeof getState;
 } = {
-  id: "local",
-  label: "Local workspace (browser storage)",
+  id: "workspace",
+  label: "Shared RPAHUB workspace",
   schemaVersion: CURRENT_SCHEMA_VERSION,
   automations,
   weeklyUpdates,
@@ -141,9 +139,9 @@ export const localStorageProvider: StorageProvider & {
   documents,
   audit,
   users,
-  messages,
+  tasks,
   referenceData,
-  backups,
+  workspace,
   initialize: () => hydrate(),
   subscribe,
   getSnapshot: getState,
