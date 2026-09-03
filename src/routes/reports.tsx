@@ -439,7 +439,7 @@ function Reports() {
               {[
                 { label: "On hold", value: projects.filter(onHold).length },
                 { label: "Cancelled", value: base.filter(cancelled).length },
-                { label: "Missing weekly update", value: records.filter(staleWeeklyUpdate).length },
+                { label: "Updates older than 7 days", value: records.filter(staleWeeklyUpdate).length },
                 { label: "Avg days in current stage", value: records.length ? Math.round(records.reduce((s, r) => s + daysInCurrentStage(r), 0) / records.length) : 0 },
               ].map((k) => (
                 <div key={k.label} className="card-surface p-4">
@@ -498,7 +498,7 @@ function Reports() {
                       <td className="px-3 py-2">{stageLabel(p)}</td>
                       <td className="px-3 py-2">{lastUpdate(p)?.rag ?? "—"}</td>
                       <td className="px-3 py-2 tabular-nums">{lastUpdate(p)?.percentComplete ?? 0}%</td>
-                      <td className={cn("px-3 py-2 tabular-nums", staleWeeklyUpdate(p) && "font-semibold text-destructive")}>
+                      <td className={cn("px-3 py-2 tabular-nums", staleWeeklyUpdate(p) && "font-medium text-muted-foreground")}>
                         {daysSinceUpdate(p) === 9999 ? "Never" : daysSinceUpdate(p)}
                       </td>
                     </tr>

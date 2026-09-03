@@ -137,7 +137,7 @@ function WeeklyUpdates() {
           u?.blockers ?? "",
           u?.decisions ?? "",
           daysSinceUpdate(a) === 9999 ? "Never" : daysSinceUpdate(a),
-          staleWeeklyUpdate(a) ? "Missing Update" : "Current",
+          staleWeeklyUpdate(a) ? "Older than 7 days" : "Current",
         ];
       }),
     );
@@ -266,8 +266,10 @@ function WeeklyUpdates() {
                   <td className="max-w-64 truncate px-3 py-2.5 text-muted-foreground">{u?.blockers ?? "—"}</td>
                   <td className="px-3 py-2.5 tabular-nums">{age === 9999 ? "Never" : `${age}d`}</td>
                   <td className="px-3 py-2.5">
-                    {staleWeeklyUpdate(a) ? (
-                      <StatusBadge value="Missing Update" className="border-destructive/30 bg-destructive/15 text-destructive" />
+                    {!u ? (
+                      <StatusBadge value="No updates yet" className="border-border bg-muted text-muted-foreground" />
+                    ) : staleWeeklyUpdate(a) ? (
+                      <StatusBadge value="Older than 7 days" className="border-border bg-muted text-muted-foreground" />
                     ) : (
                       <StatusBadge value="Current" className="border-success/30 bg-success/15 text-success" />
                     )}
