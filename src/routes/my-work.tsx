@@ -76,6 +76,7 @@ function MyWork() {
   /** Viewers without portfolio-wide rights only ever see their own records. */
   const scope = can("portfolio.view") ? all : mine;
   const tasks = myTasks(data.tasks, user);
+  const delegated = data.tasks.filter((t) => t.assignedBy === user && t.status !== "Completed");
 
   return (
     <AppShell
@@ -133,11 +134,31 @@ function MyWork() {
           records={scope.filter(awaitingApproval).filter((a) => can("approvals.view") || isMine(a))}
           note={(a) => `Sponsor approval outstanding · ${String(a.data['businessAnalyst'] ?? "unassigned")}`}
         />
-        <List
-          title="Tasks I assigned to others"
-          records={[]}
-          note={() => ""}
-        />
+        <section className="card-surface">
+          <header className="flex items-center justify-between border-b border-border px-4 py-3">
+            <h2 className="text-sm font-semibold">Tasks I assigned to others</h2>
+            <span className="text-xs text-muted-foreground">{delegated.length}</span>
+          </header>
+          <ul className="divide-y divide-border">
+            {delegated.map((t) => (
+              <li key={t.id} className="flex flex-wrap items-center gap-3 px-4 py-3">
+                <div className="min-w-0 flex-1">
+                  <p className="font-medium">{t.title}</p>
+                  <p className="mt-0.5 text-xs text-muted-foreground">
+                    {t.assignedTo} · {t.dueDate ? `due ${t.dueDate}` : "no due date"}
+                  </p>
+                </div>
+                <Badge value={t.status} />
+                <Button size="sm" variant="ghost" className="text-destructive" onClick={() => actions.deleteTask(t.id, user)}>
+                  Remove
+                </Button>
+              </li>
+            ))}
+            {delegated.length === 0 ? (
+              <li className="px-4 py-8 text-center text-sm text-muted-foreground">You have not assigned any tasks.</li>
+            ) : null}
+          </ul>
+        </section>
         <List
           title="Approaching production"
           records={scope.filter(approachingProduction)}
