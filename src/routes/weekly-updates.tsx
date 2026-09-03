@@ -13,6 +13,7 @@ import {
   healthTrend,
   lastUpdate,
   staleWeeklyUpdate,
+  hasUnreadUpdates,
   nameOf,
   onHold,
   stageLabel,
@@ -52,7 +53,8 @@ export const Route = createFileRoute("/weekly-updates")({
 
 const VIEWS = [
   { key: "week", label: "This Week" },
-  { key: "missing", label: "Missing Updates" },
+  { key: "unread", label: "Unread" },
+  { key: "missing", label: "Not Updated Recently" },
   { key: "risk", label: "Red / Amber" },
   { key: "mine", label: "My Projects" },
   { key: "all", label: "All Updates" },
@@ -69,6 +71,12 @@ function WeeklyUpdates() {
   const [detail, setDetail] = useState<Automation | null>(null);
   const [formFor, setFormFor] = useState<Automation | null>(null);
 
+  /** Opening the history marks that project's updates read for THIS user only. */
+  const openDetail = (a: Automation) => {
+    setDetail(a);
+    a.updates.forEach((u) => actions.markUpdateRead(a.id, u.id, user));
+  };
+
   const tracked = useMemo(
     () => data.automations.filter((a) => (a.stage === "project" || a.stage === "production") && !cancelled(a)),
     [data.automations],
@@ -79,6 +87,9 @@ function WeeklyUpdates() {
     switch (view) {
       case "week":
         out = tracked.filter((a) => daysSinceUpdate(a) <= 7);
+        break;
+      case "unread":
+        out = tracked.filter((a) => hasUnreadUpdates(a, user));
         break;
       case "missing":
         out = tracked.filter(staleWeeklyUpdate);
@@ -112,9 +123,9 @@ function WeeklyUpdates() {
   const kpis = [
     { label: "Active projects", value: String(activeProjects.length), view: "all" },
     { label: "Updated this week", value: String(updatedThisWeek), view: "week" },
-    { label: "Missing update", value: String(activeProjects.length - updatedThisWeek), view: "missing" },
+    { label: "Unread updates", value: String(tracked.filter((a) => hasUnreadUpdates(a, user)).length), view: "unread" },
     { label: "Red / Amber", value: String(redAmber), view: "risk" },
-    { label: "Update compliance", value: `${compliance}%`, view: "all" },
+    { label: "Updated in last 7 days", value: `${compliance}%`, view: "all" },
   ] as const;
 
   const exportView = () =>
@@ -234,7 +245,7 @@ function WeeklyUpdates() {
         <table className="w-full min-w-[1100px] text-sm">
           <thead>
             <tr className="border-b border-border bg-muted/60 text-left text-muted-foreground">
-              {["Automation ID", "Project", "Status", "Health", "% Complete", "Update Date", "Submitted By", "Progress Summary", "Blockers / Risks", "Update Age", "Compliance", ""].map((h) => (
+              {["Automation ID", "Project", "Status", "Health", "% Complete", "Update Date", "Submitted By", "Progress Summary", "Blockers / Risks", "Update Age", "Freshness", ""].map((h) => (
                 <th key={h} className="whitespace-nowrap px-3 py-2.5 font-medium">
                   {h}
                 </th>
@@ -249,8 +260,14 @@ function WeeklyUpdates() {
                 <tr key={a.id} className="border-b border-border/70 last:border-0 hover:bg-muted/40">
                   <td className="px-3 py-2.5 font-mono text-xs">{autoId(a)}</td>
                   <td className="px-3 py-2.5">
-                    <button className="font-medium text-primary hover:underline" onClick={() => setDetail(a)}>
+                    <button
+                      className={cn("text-primary hover:underline", hasUnreadUpdates(a, user) ? "font-bold" : "font-medium")}
+                      onClick={() => openDetail(a)}
+                    >
                       {nameOf(a)}
+                      {hasUnreadUpdates(a, user) ? (
+                        <span className="ml-2 rounded-full bg-primary/10 px-1.5 py-0.5 text-[10px] font-semibold text-primary">New</span>
+                      ) : null}
                     </button>
                   </td>
                   <td className="px-3 py-2.5">
