@@ -36,19 +36,16 @@ ${rows.map((r) => `<Row>${r.map(cell).join("")}</Row>`).join("\n")}
   download(filename.endsWith(".xls") ? filename : `${filename}.xls`, xml, "application/vnd.ms-excel");
 }
 
-/** Executive-layout PDF via the browser print dialog (Save as PDF). */
-export function printReport(opts: { title: string; filters: string[]; kpis: { label: string; value: string }[]; elementId: string }) {
-  const node = document.getElementById(opts.elementId);
-  if (!node) {
-    window.print();
-    return;
-  }
-  const win = window.open("", "_blank", "width=1100,height=800");
-  if (!win) return;
+type DesktopBridge = { invoke: (channel: string, payload?: unknown) => Promise<unknown> };
+const desktop = (): DesktopBridge | null =>
+  typeof window !== "undefined" ? ((window as unknown as { rpaDesktop?: DesktopBridge }).rpaDesktop ?? null) : null;
+
+/** Executive-layout report document, shared by browser print and Electron PDF. */
+function reportHtml(opts: { title: string; filters: string[]; kpis: { label: string; value: string }[]; body: string }) {
   const styles = Array.from(document.querySelectorAll('style, link[rel="stylesheet"]'))
     .map((n) => n.outerHTML)
     .join("\n");
-  win.document.write(`<!doctype html><html><head><title>${opts.title}</title>${styles}
+  return `<!doctype html><html><head><meta charset="utf-8" /><title>${opts.title}</title>${styles}
   <style>@page{size:landscape;margin:14mm} body{background:#fff;padding:0} .pdf-head{margin-bottom:16px}</style>
   </head><body class="p-6">
   <div class="pdf-head">
@@ -64,8 +61,40 @@ export function printReport(opts: { title: string; filters: string[]; kpis: { la
         .join("")}
     </div>
   </div>
-  ${node.innerHTML}
-  </body></html>`);
+  ${opts.body}
+  </body></html>`;
+}
+
+/**
+ * Executive-layout PDF.
+ *
+ * In the desktop app this goes through the secure contextBridge → IPC → main
+ * process, which renders the report and opens a native "Save as PDF" dialog.
+ * In the browser it falls back to the standard print dialog.
+ */
+export async function printReport(opts: {
+  title: string;
+  filters: string[];
+  kpis: { label: string; value: string }[];
+  elementId: string;
+}) {
+  const node = document.getElementById(opts.elementId);
+  if (!node) {
+    window.print();
+    return;
+  }
+  const html = reportHtml({ ...opts, body: node.innerHTML });
+
+  const bridge = desktop();
+  if (bridge) {
+    const safeName = opts.title.replace(/[^a-z0-9]+/gi, "-").toLowerCase();
+    await bridge.invoke("print.pdf", { html, suggestedName: `${safeName}.pdf` });
+    return;
+  }
+
+  const win = window.open("", "_blank", "width=1100,height=800");
+  if (!win) return;
+  win.document.write(html);
   win.document.close();
   setTimeout(() => {
     win.focus();
