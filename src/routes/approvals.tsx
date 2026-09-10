@@ -1,10 +1,11 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
-import { Download, ExternalLink } from "lucide-react";
+import { Download, ExternalLink, Pencil, Plus } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { useAuth } from "@/hooks/useAuth";
 import { StatusBadge } from "@/components/StatusBadge";
-import { useAppData } from "@/data";
+import { useAppData, isReadOnly } from "@/data";
+import { ApprovalDialog, type ApprovalDraft } from "@/components/ApprovalDialog";
 import { approvalRows, approvalTone, autoId, daysSince, nameOf, stageLabel, type ApprovalRow } from "@/lib/derive";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -56,8 +57,14 @@ function Approvals() {
   const { user, can, account } = useAuth();
   const [query, setQuery] = useState("");
   const [selected, setSelected] = useState<ApprovalRow | null>(null);
+  const [draft, setDraft] = useState<ApprovalDraft | null>(null);
+  const readOnly = isReadOnly();
 
-  const all = useMemo(() => approvalRows(data.automations), [data.automations]);
+  // ONE approval source: approvals on records plus centrally tracked ones.
+  const all = useMemo(
+    () => approvalRows(data.automations, data.standaloneApprovals ?? []),
+    [data.automations, data.standaloneApprovals],
+  );
 
   const rows = useMemo(() => {
     let out = all;
@@ -89,13 +96,13 @@ function Approvals() {
     if (query.trim()) {
       const q = query.toLowerCase();
       out = out.filter((r) =>
-        [nameOf(r.record), autoId(r.record), r.approval.type, r.approval.approver, r.approval.requestedBy]
+        [r.subject, r.record ? autoId(r.record) : "", r.approval.type, r.approval.stage ?? "", r.approval.approver, r.approval.requestedBy]
           .join(" ")
           .toLowerCase()
           .includes(q),
       );
     }
-    return [...out].sort((a, b) => b.daysWaiting - a.daysWaiting || nameOf(a.record).localeCompare(nameOf(b.record)));
+    return [...out].sort((a, b) => b.daysWaiting - a.daysWaiting || a.subject.localeCompare(b.subject));
   }, [all, view, query, user]);
 
   const kpis = [
@@ -108,21 +115,22 @@ function Approvals() {
   const exportView = () =>
     downloadCsv(
       `approvals-${view}-${new Date().toISOString().slice(0, 10)}`,
-      ["Automation ID", "Name", "Approval Type", "Status", "Requested By", "Requested Date", "Approver", "Due Date", "Days Waiting", "Decision Date", "Decision Comments", "Evidence", "Current Stage"],
+      ["Automation ID", "Name", "Approval Type", "Approval Stage", "Status", "Requested By", "Requested Date", "Approver", "Due Date", "Days Waiting", "Decision Date", "Decision Comments", "Evidence", "Current Stage"],
       rows.map((r) => [
-        autoId(r.record),
-        nameOf(r.record),
+        r.record ? autoId(r.record) : "—",
+        r.subject,
         r.approval.type,
+        r.approval.stage ?? "",
         r.approval.status,
         r.approval.requestedBy,
         r.approval.requestedDate,
         r.approval.approver,
         r.approval.dueDate ?? "",
-        r.approval.status === "Pending" ? r.daysWaiting : "",
+        r.daysWaiting,
         r.approval.decisionDate ?? "",
         r.approval.decisionComments ?? "",
         r.approval.evidenceLink ?? "",
-        stageLabel(r.record),
+        r.record ? stageLabel(r.record) : "Not linked",
       ]),
     );
 
@@ -132,9 +140,14 @@ function Approvals() {
       title="Approvals"
       subtitle="Centralized view of every approval captured against the automation portfolio"
       actions={
-        <Button variant="outline" onClick={exportView}>
-          <Download className="h-4 w-4" /> Export Current View
-        </Button>
+        <>
+          <Button variant="outline" onClick={exportView}>
+            <Download className="h-4 w-4" /> Export Current View
+          </Button>
+          <Button onClick={() => setDraft({ automationId: null })} disabled={readOnly}>
+            <Plus className="h-4 w-4" /> Track Approval
+          </Button>
+        </>
       }
     >
       <div className="mb-4 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
@@ -173,7 +186,7 @@ function Approvals() {
         <table className="w-full min-w-[1000px] text-sm">
           <thead>
             <tr className="border-b border-border bg-muted/60 text-left text-muted-foreground">
-              {["Automation ID", "Opportunity / Project", "Approval Type", "Status", "Requested By", "Requested", "Approver", "Due", "Days Waiting", "Decision", "Stage"].map((h) => (
+              {["Automation ID", "Opportunity / Project", "Approval Type", "Approval Stage", "Status", "Requested By", "Requested", "Approver", "Due", "Days Waiting", "Decision", "Stage", ""].map((h) => (
                 <th key={h} className="whitespace-nowrap px-3 py-2.5 font-medium">
                   {h}
                 </th>
@@ -187,9 +200,10 @@ function Approvals() {
                 onClick={() => setSelected(r)}
                 className="cursor-pointer border-b border-border/70 last:border-0 hover:bg-muted/40"
               >
-                <td className="px-3 py-2.5 font-mono text-xs">{autoId(r.record)}</td>
-                <td className="px-3 py-2.5 font-medium text-primary">{nameOf(r.record)}</td>
+                <td className="px-3 py-2.5 font-mono text-xs">{r.record ? autoId(r.record) : "—"}</td>
+                <td className="px-3 py-2.5 font-medium text-primary">{r.subject}</td>
                 <td className="whitespace-nowrap px-3 py-2.5">{r.approval.type}</td>
+                <td className="whitespace-nowrap px-3 py-2.5 text-muted-foreground">{r.approval.stage ?? "—"}</td>
                 <td className="px-3 py-2.5">
                   <StatusBadge value={r.approval.status} />
                 </td>
@@ -198,18 +212,31 @@ function Approvals() {
                 <td className="whitespace-nowrap px-3 py-2.5">{r.approval.approver}</td>
                 <td className="whitespace-nowrap px-3 py-2.5">{r.approval.dueDate ?? "—"}</td>
                 <td className={cn("px-3 py-2.5 tabular-nums", TONE_CLASS[approvalTone(r.daysWaiting)])}>
-                  {r.approval.status === "Pending" ? `${r.daysWaiting}d` : "—"}
+                  {`${r.daysWaiting}d`}
                 </td>
                 <td className="whitespace-nowrap px-3 py-2.5 text-muted-foreground">{r.approval.decisionDate ?? "—"}</td>
                 <td className="px-3 py-2.5">
-                  <StatusBadge value={stageLabel(r.record)} />
+                  <StatusBadge value={r.record ? stageLabel(r.record) : "Not linked"} />
+                </td>
+                <td className="px-3 py-2.5 text-right">
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    disabled={readOnly}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setDraft({ approval: r.approval, automationId: r.record?.id ?? null, subject: r.subject });
+                    }}
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                  </Button>
                 </td>
               </tr>
             ))}
             {rows.length === 0 ? (
               <tr>
-                <td colSpan={11} className="px-3 py-10 text-center text-muted-foreground">
-                  No approvals in this view. Approvals are captured manually on each automation record.
+                <td colSpan={13} className="px-3 py-10 text-center text-muted-foreground">
+                  No approvals in this view. Use “Track Approval” to add one, with or without a linked automation.
                 </td>
               </tr>
             ) : null}
@@ -231,8 +258,10 @@ function Approvals() {
               </DialogHeader>
               <div className="space-y-3 text-sm">
                 <div>
-                  <p className="font-mono text-xs text-muted-foreground">{autoId(selected.record)}</p>
-                  <p className="text-base font-medium">{nameOf(selected.record)}</p>
+                  <p className="font-mono text-xs text-muted-foreground">
+                    {selected.record ? autoId(selected.record) : "Not linked to an automation"}
+                  </p>
+                  <p className="text-base font-medium">{selected.subject}</p>
                 </div>
                 <dl className="grid grid-cols-2 gap-3">
                   {[
@@ -241,9 +270,10 @@ function Approvals() {
                     ["Requested date", selected.approval.requestedDate],
                     ["Approver", selected.approval.approver],
                     ["Due date", selected.approval.dueDate ?? "—"],
-                    ["Days waiting", selected.approval.status === "Pending" ? `${selected.daysWaiting} days` : "—"],
+                    ["Approval stage", selected.approval.stage ?? "—"],
+                    ["Days waiting", `${selected.daysWaiting} days`],
                     ["Decision date", selected.approval.decisionDate ?? "—"],
-                    ["Automation stage", stageLabel(selected.record)],
+                    ["Automation stage", selected.record ? stageLabel(selected.record) : "Not linked"],
                   ].map(([k, v]) => (
                     <div key={k as string}>
                       <dt className="text-xs text-muted-foreground">{k}</dt>
@@ -265,16 +295,30 @@ function Approvals() {
                     <p>—</p>
                   )}
                 </div>
-                <Button asChild>
-                  <Link to="/record/$id" params={{ id: selected.record.id }}>
-                    <ExternalLink className="h-4 w-4" /> Open Automation
-                  </Link>
-                </Button>
+                <div className="flex gap-2">
+                  {selected.record ? (
+                    <Button asChild>
+                      <Link to="/record/$id" params={{ id: selected.record.id }}>
+                        <ExternalLink className="h-4 w-4" /> Open Automation
+                      </Link>
+                    </Button>
+                  ) : null}
+                  <Button
+                    variant="outline"
+                    disabled={readOnly}
+                    onClick={() =>
+                      setDraft({ approval: selected.approval, automationId: selected.record?.id ?? null, subject: selected.subject })
+                    }
+                  >
+                    <Pencil className="h-4 w-4" /> Edit Approval
+                  </Button>
+                </div>
               </div>
             </>
           ) : null}
         </DialogContent>
       </Dialog>
+      <ApprovalDialog open={!!draft} onOpenChange={(o) => !o && setDraft(null)} draft={draft ?? {}} />
     </AppShell>
   );
 }

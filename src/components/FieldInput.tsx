@@ -6,6 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ExternalLink } from "lucide-react";
+import { ManualSelect } from "@/components/ManualSelect";
 
 export function FieldInput({
   field,
@@ -34,7 +35,7 @@ export function FieldInput({
       <Label className="text-xs text-muted-foreground">{field.label}</Label>
       {field.type === "textarea" ? (
         <Textarea rows={3} value={draft} onChange={(e) => setDraft(e.target.value)} onBlur={commitText} className="bg-card" />
-      ) : field.type === "select" || field.type === "yesno" ? (
+      ) : field.type === "yesno" ? (
         <Select
           value={draft || "__empty"}
           onValueChange={(v) => {
@@ -48,13 +49,23 @@ export function FieldInput({
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="__empty">— Not set —</SelectItem>
-            {(field.type === "yesno" ? ["Yes", "No"] : options).map((o) => (
+            {["Yes", "No"].map((o) => (
               <SelectItem key={o} value={o}>
                 {o}
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
+      ) : field.type === "select" ? (
+        /* Dropdowns accept a one-off typed value without changing the list. */
+        <ManualSelect
+          value={draft}
+          options={options}
+          onChange={(v) => {
+            setDraft(v);
+            onCommit(v);
+          }}
+        />
       ) : (
         <div className="flex gap-2">
           <Input

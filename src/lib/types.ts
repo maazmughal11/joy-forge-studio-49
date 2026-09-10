@@ -47,10 +47,25 @@ export type ApprovalStatus = "Draft" | "Pending" | "Approved" | "Rejected" | "Ca
 
 export const APPROVAL_TYPES = [
   "Business Case Approval",
-  "Move to Project Approval",
+  "Business Sponsor Approval",
+  "Process Owner Approval",
+  "Technical Approval",
+  "Security Approval",
+  "Architecture Approval",
   "UAT Approval",
   "Deployment Approval",
-  "Benefits Validation",
+  "Financial Approval",
+  "Other",
+] as const;
+
+export const APPROVAL_STAGES = [
+  "Idea Assessment",
+  "Discovery",
+  "Business Case",
+  "Development",
+  "Testing / UAT",
+  "Deployment",
+  "Production",
   "Other",
 ] as const;
 
@@ -61,11 +76,21 @@ export type Approval = {
   requestedBy: string;
   requestedDate: string;
   approver: string;
+  /** Lifecycle stage the approval belongs to. */
+  stage?: string;
+  description?: string;
   dueDate?: string;
   decisionDate?: string;
   decisionComments?: string;
   evidenceLink?: string;
+  modifiedDate?: string;
 };
+
+/**
+ * An approval tracked centrally that is not linked to a portfolio automation
+ * (for example an approval for work that has not been submitted yet).
+ */
+export type UnlinkedApproval = Approval & { subject: string };
 
 export type Scoring = {
   businessValue: number;
@@ -121,7 +146,7 @@ export type TaskRecord = {
 /** Deletion marker so a delete on one workstation is not resurrected by a peer. */
 export type Tombstone = {
   id: string;
-  entity: "automation" | "task";
+  entity: "automation" | "task" | "approval";
   deletedAt: string;
   deletedBy: string;
 };
@@ -155,6 +180,24 @@ export type UserAccount = {
   modifiedDate: string;
 };
 
+/**
+ * Admin-configurable form layout. Only presentation is configurable —
+ * internal field ids and stored data are never renamed or lost.
+ */
+export type FormFieldConfig = {
+  id: string;
+  label?: string;
+  visible?: boolean;
+  required?: boolean;
+  section?: string;
+  order?: number;
+};
+
+export type FormConfig = {
+  /** Keyed by form: "idea" | "project" | "automation". */
+  [form: string]: { fields: FormFieldConfig[]; sectionOrder?: string[] };
+};
+
 export type Settings = {
   currentUser: string;
   users: string[];
@@ -163,12 +206,15 @@ export type Settings = {
   storageMode: StorageMode;
   lastWriteAt?: string;
   workspaceLock?: { user: string; acquiredAt: string } | null;
+  formConfig?: FormConfig;
 };
 
 export type AppData = {
   version: number;
   settings: Settings;
   automations: Automation[];
+  /** Approvals tracked centrally without a linked automation. */
+  standaloneApprovals: UnlinkedApproval[];
   tasks: TaskRecord[];
   tombstones: Tombstone[];
   adminLog: AdminLogEntry[];

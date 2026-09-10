@@ -9,7 +9,8 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { FieldInput } from "@/components/FieldInput";
 import { useAppData, useAutomation, actions } from "@/data";
 import { SECTIONS, completeness, fieldsForStage, priorityFromScoring } from "@/lib/fields";
-import { moveBlockers, nameOf } from "@/lib/derive";
+import { approvalDaysWaiting, moveBlockers, nameOf } from "@/lib/derive";
+import { ApprovalDialog, type ApprovalDraft } from "@/components/ApprovalDialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -163,6 +164,7 @@ function RecordPage() {
           <TabsList>
             <TabsTrigger value="details">Details</TabsTrigger>
             <TabsTrigger value="updates">Weekly Updates</TabsTrigger>
+            <TabsTrigger value="approvals">Approvals</TabsTrigger>
             <TabsTrigger value="documents">Documents</TabsTrigger>
             <TabsTrigger value="comments">Comments</TabsTrigger>
             <TabsTrigger value="history">History</TabsTrigger>
@@ -194,6 +196,10 @@ function RecordPage() {
 
           <TabsContent value="updates">
             <WeeklyUpdates record={record} user={user} />
+          </TabsContent>
+
+          <TabsContent value="approvals">
+            <RecordApprovals record={record} user={user} />
           </TabsContent>
 
           <TabsContent value="documents">
@@ -297,17 +303,57 @@ function RecordPage() {
   );
 }
 
+/**
+ * Weekly updates inside a record use exactly the same fields and the same
+ * stored data as the Weekly Updates menu — an update logged here appears
+ * there immediately, and the other way round.
+ */
 function WeeklyUpdates({ record, user }: { record: Automation; user: string }) {
   const [text, setText] = useState("");
   const [percent, setPercent] = useState(50);
   const [rag, setRag] = useState<"Red" | "Amber" | "Green">("Green");
+  const [accomplishments, setAccomplishments] = useState("");
+  const [nextSteps, setNextSteps] = useState("");
+  const [blockers, setBlockers] = useState("");
+  const [decisions, setDecisions] = useState("");
+  const [editing, setEditing] = useState<string | null>(null);
+  const [editText, setEditText] = useState("");
+
+  const submit = () => {
+    if (!text.trim()) {
+      toast.error("Add a status comment first");
+      return;
+    }
+    actions.addUpdate(
+      record.id,
+      {
+        text: text.trim(),
+        percentComplete: percent,
+        rag,
+        accomplishments: accomplishments.trim(),
+        nextSteps: nextSteps.trim(),
+        blockers: blockers.trim(),
+        decisions: decisions.trim(),
+      },
+      user,
+    );
+    setText("");
+    setAccomplishments("");
+    setNextSteps("");
+    setBlockers("");
+    setDecisions("");
+    toast.success("Weekly update logged");
+  };
 
   return (
     <div className="space-y-4">
       <section className="card-surface p-4">
         <h2 className="text-sm font-semibold">Submit weekly update</h2>
-        <div className="mt-3 grid gap-3 md:grid-cols-[1fr_140px_140px_auto] md:items-end">
-          <div className="space-y-1.5">
+        <p className="mb-3 text-xs text-muted-foreground">
+          Weekly updates are optional and shared with the Weekly Updates menu.
+        </p>
+        <div className="grid gap-3 md:grid-cols-2">
+          <div className="space-y-1.5 md:col-span-2">
             <Label className="text-xs text-muted-foreground">Status comment</Label>
             <Textarea rows={2} value={text} onChange={(e) => setText(e.target.value)} className="bg-card" />
           </div>
@@ -330,17 +376,25 @@ function WeeklyUpdates({ record, user }: { record: Automation; user: string }) {
               </SelectContent>
             </Select>
           </div>
-          <Button
-            onClick={() => {
-              if (!text.trim()) {
-                toast.error("Add a status comment first");
-                return;
-              }
-              actions.addUpdate(record.id, { text: text.trim(), percentComplete: percent, rag }, user);
-              setText("");
-              toast.success("Weekly update logged");
-            }}
-          >
+          <div className="space-y-1.5">
+            <Label className="text-xs text-muted-foreground">Accomplishments this week</Label>
+            <Textarea rows={2} value={accomplishments} onChange={(e) => setAccomplishments(e.target.value)} className="bg-card" />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs text-muted-foreground">Next steps</Label>
+            <Textarea rows={2} value={nextSteps} onChange={(e) => setNextSteps(e.target.value)} className="bg-card" />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs text-muted-foreground">Blockers / risks</Label>
+            <Textarea rows={2} value={blockers} onChange={(e) => setBlockers(e.target.value)} className="bg-card" />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs text-muted-foreground">Decisions needed</Label>
+            <Textarea rows={2} value={decisions} onChange={(e) => setDecisions(e.target.value)} className="bg-card" />
+          </div>
+        </div>
+        <div className="mt-3 flex justify-end">
+          <Button onClick={submit}>
             <Plus className="h-4 w-4" /> Log update
           </Button>
         </div>
@@ -377,16 +431,114 @@ function WeeklyUpdates({ record, user }: { record: Automation; user: string }) {
             <li key={u.id} className="flex flex-wrap items-start gap-3 px-4 py-3">
               <StatusBadge value={u.rag} />
               <div className="min-w-0 flex-1">
-                <p className="text-sm">{u.text}</p>
-                <p className="mt-0.5 text-xs text-muted-foreground">
-                  {u.submittedBy} · {new Date(u.date).toLocaleDateString()} · {u.percentComplete}% complete
-                </p>
+                {editing === u.id ? (
+                  <div className="space-y-2">
+                    <Textarea rows={2} value={editText} onChange={(e) => setEditText(e.target.value)} className="bg-card" />
+                    <div className="flex gap-2">
+                      <Button
+                        size="sm"
+                        onClick={() => {
+                          actions.editUpdate(record.id, u.id, { text: editText.trim() }, user);
+                          setEditing(null);
+                          toast.success("Weekly update edited");
+                        }}
+                      >
+                        Save
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={() => setEditing(null)}>
+                        Cancel
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <p className="text-sm">{u.text}</p>
+                    {u.accomplishments ? <p className="mt-1 text-xs"><span className="text-muted-foreground">Accomplishments: </span>{u.accomplishments}</p> : null}
+                    {u.nextSteps ? <p className="text-xs"><span className="text-muted-foreground">Next steps: </span>{u.nextSteps}</p> : null}
+                    {u.blockers ? <p className="text-xs"><span className="text-muted-foreground">Blockers: </span>{u.blockers}</p> : null}
+                    {u.decisions ? <p className="text-xs"><span className="text-muted-foreground">Decisions needed: </span>{u.decisions}</p> : null}
+                    <p className="mt-0.5 text-xs text-muted-foreground">
+                      {u.submittedBy} · {new Date(u.date).toLocaleDateString()} · {u.percentComplete}% complete
+                    </p>
+                  </>
+                )}
               </div>
+              {editing === u.id ? null : (
+                <Button size="sm" variant="ghost" onClick={() => { setEditing(u.id); setEditText(u.text); }}>
+                  Edit
+                </Button>
+              )}
             </li>
           ))}
           {record.updates.length === 0 ? <li className="px-4 py-8 text-center text-sm text-muted-foreground">No updates logged yet.</li> : null}
         </ul>
       </section>
+    </div>
+  );
+}
+
+/**
+ * Approvals inside a record. Linked to this automation and written to the
+ * same approval data the Approvals menu reads.
+ */
+function RecordApprovals({ record, user }: { record: Automation; user: string }) {
+  const [draft, setDraft] = useState<ApprovalDraft | null>(null);
+  const approvals = record.approvals ?? [];
+
+  return (
+    <div className="space-y-4">
+      <section className="card-surface flex flex-wrap items-center justify-between gap-3 p-4">
+        <div>
+          <h2 className="text-sm font-semibold">Approvals for this automation</h2>
+          <p className="text-xs text-muted-foreground">Everything added here also appears in the Approvals menu.</p>
+        </div>
+        <Button onClick={() => setDraft({ automationId: record.id, subject: nameOf(record) })}>
+          <Plus className="h-4 w-4" /> Track Approval
+        </Button>
+      </section>
+
+      <section className="card-surface">
+        <ul className="divide-y divide-border">
+          {approvals.map((ap) => (
+            <li key={ap.id} className="flex flex-wrap items-start gap-3 px-4 py-3">
+              <StatusBadge value={ap.status} />
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium">
+                  {ap.type}
+                  {ap.stage ? ` · ${ap.stage}` : ""}
+                </p>
+                <p className="mt-0.5 text-xs text-muted-foreground">
+                  Approver: {ap.approver} · Requested {ap.requestedDate} by {ap.requestedBy} · {approvalDaysWaiting(ap)} days waiting
+                  {ap.decisionDate ? ` · Decided ${ap.decisionDate}` : ""}
+                </p>
+                {ap.decisionComments ? <p className="mt-1 text-xs">{ap.decisionComments}</p> : null}
+              </div>
+              <div className="flex gap-1">
+                <Button size="sm" variant="ghost" onClick={() => setDraft({ approval: ap, automationId: record.id, subject: nameOf(record) })}>
+                  Edit
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="text-destructive"
+                  onClick={() => {
+                    if (!window.confirm(`Remove the "${ap.type}" approval? This cannot be undone.`)) return;
+                    actions.deleteApproval(record.id, ap.id, user);
+                    toast.success("Approval removed");
+                  }}
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
+              </div>
+            </li>
+          ))}
+          {approvals.length === 0 ? (
+            <li className="px-4 py-8 text-center text-sm text-muted-foreground">No approvals tracked for this record yet.</li>
+          ) : null}
+        </ul>
+      </section>
+
+      <ApprovalDialog open={!!draft} onOpenChange={(o) => !o && setDraft(null)} draft={draft ?? {}} lockAutomation />
     </div>
   );
 }

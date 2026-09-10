@@ -26,8 +26,11 @@ export type {
   TaskRecord,
   TaskStatus,
   Tombstone,
+  UnlinkedApproval,
+  FormConfig,
+  FormFieldConfig,
   UserAccount,
   WeeklyUpdate,
 } from "@/lib/types";
 
-export { APPROVAL_TYPES } from "@/lib/types";
+export { APPROVAL_TYPES, APPROVAL_STAGES } from "@/lib/types";

@@ -1,4 +1,4 @@
-import type { Approval, Automation, TaskRecord } from "./types";
+import type { Approval, Automation, TaskRecord, UnlinkedApproval } from "./types";
 import { completeness, EXPECTED_DOCS, GOVERNANCE_FIELDS, isFilled } from "./fields";
 
 export const nameOf = (a: Automation) => String(a.data['opportunityName'] ?? "Untitled opportunity");
@@ -124,16 +124,42 @@ export function weeklyUpdateRows(records: Automation[]) {
 
 // ---------- Approvals ----------
 
-export type ApprovalRow = { record: Automation; approval: Approval; daysWaiting: number };
+export type ApprovalRow = {
+  /** The linked automation, or null for an approval tracked on its own. */
+  record: Automation | null;
+  subject: string;
+  approval: Approval;
+  daysWaiting: number;
+};
 
-export function approvalRows(records: Automation[]): ApprovalRow[] {
-  return records.flatMap((r) =>
+/**
+ * Days waiting = requested date → decision date (or today while pending),
+ * so completed approvals still show how long they actually took.
+ */
+export function approvalDaysWaiting(ap: Approval) {
+  const from = new Date(ap.requestedDate).getTime();
+  if (!ap.requestedDate || Number.isNaN(from)) return 0;
+  const to = ap.status === "Pending" ? Date.now() : new Date(ap.decisionDate ?? Date.now()).getTime();
+  return Math.max(0, Math.floor((to - from) / 86400000));
+}
+
+/** ONE approval source: approvals on records plus centrally tracked ones. */
+export function approvalRows(records: Automation[], standalone: UnlinkedApproval[] = []): ApprovalRow[] {
+  const linked = records.flatMap((r) =>
     (r.approvals ?? []).map((ap) => ({
       record: r,
+      subject: nameOf(r),
       approval: ap,
-      daysWaiting: ap.status === "Pending" ? daysSince(ap.requestedDate) : 0,
+      daysWaiting: approvalDaysWaiting(ap),
     })),
   );
+  const loose = standalone.map((ap) => ({
+    record: null,
+    subject: ap.subject,
+    approval: ap as Approval,
+    daysWaiting: approvalDaysWaiting(ap),
+  }));
+  return [...linked, ...loose];
 }
 
 export const approvalTone = (days: number) => (days > 7 ? "overdue" : days >= 4 ? "attention" : "normal");
@@ -211,10 +237,25 @@ export function healthTrend(records: Automation[], weeks = 12) {
   return out;
 }
 
-/** Monthly movement of records into each lifecycle stage. */
+/** Lifecycle categories actually present in the data, in a stable order. */
+export function lifecycleCategories(records: Automation[]) {
+  const preferred = ["Discovery", "Pipeline", "Deployed", "Archived"];
+  const found = new Set<string>(records.map((a) => String(lifecycleCategory(a))).filter(Boolean));
+  const ordered = preferred.filter((c) => found.has(c));
+  [...found].sort().forEach((c) => {
+    if (!ordered.includes(c)) ordered.push(c);
+  });
+  return ordered;
+}
+
+/**
+ * Monthly movement per lifecycle category. Categories come from each record's
+ * own Lifecycle Category value rather than a hard-coded list.
+ */
 export function pipelineTrend(records: Automation[], months = 12) {
   const now = new Date();
-  const out: { month: string; Discovery: number; Pipeline: number; Production: number; New: number }[] = [];
+  const categories = lifecycleCategories(records);
+  const out: ({ month: string; New: number } & Record<string, number | string>)[] = [];
   for (let i = months - 1; i >= 0; i--) {
     const from = new Date(now.getFullYear(), now.getMonth() - i, 1);
     const to = new Date(now.getFullYear(), now.getMonth() - i + 1, 1);
@@ -224,13 +265,11 @@ export function pipelineTrend(records: Automation[], months = 12) {
       return t >= from.getTime() && t < to.getTime();
     });
     const existing = records.filter((a) => new Date(a.createdDate).getTime() < to.getTime());
-    out.push({
-      month: label,
-      New: created.length,
-      Discovery: existing.filter((a) => a.stage === "idea").length,
-      Pipeline: existing.filter((a) => a.stage === "project").length,
-      Production: existing.filter((a) => a.stage === "production" && new Date(a.modifiedDate).getTime() < to.getTime()).length,
+    const row: { month: string; New: number } & Record<string, number | string> = { month: label, New: created.length };
+    categories.forEach((c) => {
+      row[c] = existing.filter((a) => lifecycleCategory(a) === c).length;
     });
+    out.push(row);
   }
   return out;
 }

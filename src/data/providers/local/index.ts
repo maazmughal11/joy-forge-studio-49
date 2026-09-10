@@ -63,6 +63,7 @@ const weeklyUpdates: WeeklyUpdateRepository = {
       .filter((a) => !automationId || a.id === automationId)
       .flatMap((a) => a.updates.map((u) => ({ ...u, automationId: a.id }))),
   createWeeklyUpdate: (automationId, update, actor) => engine.addUpdate(automationId, update, actor),
+  editWeeklyUpdate: (automationId, updateId, patch, actor) => engine.editUpdate(automationId, updateId, patch, actor),
   markRead: (automationId, updateId, actor) => engine.markUpdateRead(automationId, updateId, actor),
 };
 
@@ -74,6 +75,11 @@ const approvals: ApprovalRepository = {
   createApproval: (automationId, approval, actor) => engine.addApproval(automationId, approval, actor),
   updateApproval: (automationId, approvalId, patch, actor) =>
     engine.updateApproval(automationId, approvalId, patch, actor),
+  deleteApproval: (automationId, approvalId, actor) => engine.removeApproval(automationId, approvalId, actor),
+  getUnlinkedApprovals: () => getState().standaloneApprovals ?? [],
+  createUnlinkedApproval: (approval, actor) => engine.addStandaloneApproval(approval, actor),
+  updateUnlinkedApproval: (approvalId, patch, actor) => engine.updateStandaloneApproval(approvalId, patch, actor),
+  deleteUnlinkedApproval: (approvalId, actor) => engine.removeStandaloneApproval(approvalId, actor),
 };
 
 const comments: CommentRepository = {

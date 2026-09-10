@@ -14,6 +14,7 @@ const ALLOWED = new Set([
   "app.paths",
   // Shared RPAHUB workspace
   "workspace.status",
+  "workspace.probe",
   "workspace.read",
   "workspace.write",
   // Printing / PDF

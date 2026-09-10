@@ -1,9 +1,10 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Download } from "lucide-react";
 import { AppShell } from "@/components/AppShell";
 import { useAuth } from "@/hooks/useAuth";
 import { StatusBadge } from "@/components/StatusBadge";
+import { AutomationPicker } from "@/components/AutomationPicker";
 import { useAppData, actions } from "@/data";
 import {
   autoId,
@@ -70,6 +71,7 @@ function WeeklyUpdates() {
   const [query, setQuery] = useState("");
   const [detail, setDetail] = useState<Automation | null>(null);
   const [formFor, setFormFor] = useState<Automation | null>(null);
+  const [formOpen, setFormOpen] = useState(false);
 
   /** Opening the history marks that project's updates read for THIS user only. */
   const openDetail = (a: Automation) => {
@@ -161,10 +163,7 @@ function WeeklyUpdates() {
       actions={
         <>
           {can("updates.submit") ? (
-            <Button
-              onClick={() => setFormFor(rows[0] ?? tracked[0] ?? null)}
-              disabled={tracked.length === 0}
-            >
+            <Button onClick={() => { setFormFor(null); setFormOpen(true); }} disabled={tracked.length === 0}>
               Submit Weekly Update
             </Button>
           ) : null}
@@ -357,12 +356,38 @@ function WeeklyUpdates() {
         </DialogContent>
       </Dialog>
 
-      <UpdateForm record={formFor} user={user} onClose={() => setFormFor(null)} />
+      <UpdateForm
+        open={formOpen || !!formFor}
+        initialRecordId={formFor?.id ?? null}
+        user={user}
+        onClose={() => { setFormFor(null); setFormOpen(false); }}
+      />
     </AppShell>
   );
 }
 
-function UpdateForm({ record, user, onClose }: { record: Automation | null; user: string; onClose: () => void }) {
+/**
+ * Weekly update form. The automation is chosen with the same searchable
+ * picker used everywhere else, so an update submitted from this menu and one
+ * submitted inside a record are the same thing.
+ */
+function UpdateForm({
+  open,
+  initialRecordId,
+  user,
+  onClose,
+}: {
+  open: boolean;
+  initialRecordId: string | null;
+  user: string;
+  onClose: () => void;
+}) {
+  const data = useAppData();
+  const [recordId, setRecordId] = useState<string | null>(initialRecordId);
+  useEffect(() => {
+    if (open) setRecordId(initialRecordId);
+  }, [open, initialRecordId]);
+  const record = data.automations.find((a) => a.id === recordId) ?? null;
   const [rag, setRag] = useState("Green");
   const [pct, setPct] = useState("50");
   const [text, setText] = useState("");
@@ -372,14 +397,23 @@ function UpdateForm({ record, user, onClose }: { record: Automation | null; user
   const [decisions, setDecisions] = useState("");
 
   return (
-    <Dialog open={!!record} onOpenChange={(o) => !o && onClose()}>
+    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-h-[85vh] max-w-lg overflow-y-auto">
-        {record ? (
-          <>
+        <>
             <DialogHeader>
-              <DialogTitle>Weekly update — {nameOf(record)}</DialogTitle>
+              <DialogTitle>Weekly update{record ? ` — ${nameOf(record)}` : ""}</DialogTitle>
             </DialogHeader>
             <div className="space-y-3">
+              <div>
+                <Label>Automation</Label>
+                <div className="mt-1">
+                  <AutomationPicker
+                    value={recordId}
+                    onChange={setRecordId}
+                    filter={(a) => a.stage === "project" || a.stage === "production"}
+                  />
+                </div>
+              </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <Label>Health / RAG</Label>
@@ -417,6 +451,10 @@ function UpdateForm({ record, user, onClose }: { record: Automation | null; user
               </div>
               <Button
                 onClick={() => {
+                  if (!record) {
+                    toast.error("Select an automation first");
+                    return;
+                  }
                   if (!text.trim()) {
                     toast.error("Add a progress summary before submitting");
                     return;
@@ -447,7 +485,6 @@ function UpdateForm({ record, user, onClose }: { record: Automation | null; user
               </Button>
             </div>
           </>
-        ) : null}
       </DialogContent>
     </Dialog>
   );

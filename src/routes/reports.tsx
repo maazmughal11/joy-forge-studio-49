@@ -33,6 +33,7 @@ import {
   num,
   onHold,
   pipelineTrend,
+  lifecycleCategories,
   stageLabel,
   str,
 } from "@/lib/derive";
@@ -182,6 +183,8 @@ function Reports() {
   ).sort((a, b) => b.value - a.value);
 
   const pipeTrend = pipelineTrend(records, 12);
+  // Chart series follow each record's own Lifecycle Category.
+  const pipeCategories = lifecycleCategories(records);
 
   // 8-week health trend across all projects
   const trend = Array.from({ length: 8 }, (_, idx) => {
@@ -388,9 +391,15 @@ function Reports() {
                 <YAxis allowDecimals={false} tick={{ fontSize: 11 }} />
                 <Tooltip />
                 <Legend />
-                <Line type="monotone" dataKey="Discovery" stroke="var(--chart-1)" strokeWidth={2} />
-                <Line type="monotone" dataKey="Pipeline" stroke="var(--chart-3)" strokeWidth={2} />
-                <Line type="monotone" dataKey="Production" stroke="var(--chart-2)" strokeWidth={2} />
+                {pipeCategories.map((c, i) => (
+                  <Line
+                    key={c}
+                    type="monotone"
+                    dataKey={c}
+                    stroke={`var(--chart-${(i % 5) + 1})`}
+                    strokeWidth={2}
+                  />
+                ))}
                 <Line type="monotone" dataKey="New" name="New ideas" stroke="var(--chart-4)" strokeWidth={2} strokeDasharray="4 3" />
               </LineChart>
             </Panel>

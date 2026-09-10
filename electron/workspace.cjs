@@ -1,201 +1,139 @@
 /**
- * Shared RPAHUB workspace gateway (Electron main process).
+ * Shared RPAHUB workspace gateway (Electron main process side).
  *
  * ONE authoritative portfolio database lives on the company network share:
- *
  *   \\westrock.com\shareddata\1101\RPAHUB\Data\portfolio.db
  *
- * The file holds a versioned JSON document envelope:
- *   { schemaVersion, rev, updatedAt, updatedBy, doc }
+ * This module NEVER touches the filesystem itself. Every operation is handed
+ * to a background worker thread (electron/workspace-worker.cjs) and awaited
+ * with a bounded timeout, so a dropped VPN can never freeze the main process
+ * or the application window.
  *
- * Concurrency: every write takes a SHORT-LIVED exclusive lock file, verifies
- * the caller's base revision (stale writes are rejected so the renderer can
- * merge instead of destroying a newer change), writes to a temp file and
- * atomically renames it into place. Locks are released immediately and stale
- * locks (> 15s) are reclaimed so a crashed client cannot block the team.
+ * Resilience rules:
+ *  - bounded timeouts: a hung SMB call is abandoned, the worker is replaced
+ *  - circuit breaker: once offline we stop hammering the share; background
+ *    probes and the user's Retry/Sync button re-open the circuit
+ *  - never create a local production database as a fallback
  */
-const fs = require("node:fs");
 const path = require("node:path");
+const { Worker } = require("node:worker_threads");
 
 const SHARED_ROOT = "\\\\westrock.com\\shareddata\\1101\\RPAHUB";
 const DATA_DIR = path.join(SHARED_ROOT, "Data");
 const DB_FILE = path.join(DATA_DIR, "portfolio.db");
 const LOCK_FILE = path.join(DATA_DIR, "portfolio.lock");
 const SCHEMA_VERSION = 7;
-const LOCK_STALE_MS = 15000;
 
-/** Development / non-Windows fallback so the desktop shell is testable. */
-function resolveDataDir() {
-  if (process.env.RPAHUB_DATA_DIR) return process.env.RPAHUB_DATA_DIR;
-  return DATA_DIR;
+const OFFLINE_MESSAGE =
+  "The RPAHUB shared database cannot currently be reached. If you are working remotely, connect to the company VPN and try again.";
+
+const TIMEOUTS = { status: 6000, probe: 4000, read: 8000, write: 15000 };
+/** While the circuit is open we fail fast instead of blocking on the share. */
+const CIRCUIT_MS = 15000;
+
+const dataDir = () => process.env.RPAHUB_DATA_DIR || DATA_DIR;
+
+let worker = null;
+let seq = 0;
+const pending = new Map();
+let offlineUntil = 0;
+
+function settleAll(error) {
+  pending.forEach((entry) => {
+    clearTimeout(entry.timer);
+    entry.resolve({ ok: false, connected: false, offline: true, path: dataDir(), error });
+  });
+  pending.clear();
 }
 
-const paths = () => {
-  const dir = resolveDataDir();
-  return { dir, db: path.join(dir, "portfolio.db"), lock: path.join(dir, "portfolio.lock") };
-};
+function ensureWorker() {
+  if (worker) return worker;
+  worker = new Worker(path.join(__dirname, "workspace-worker.cjs"));
+  worker.unref();
+  worker.on("message", ({ id, result }) => {
+    const entry = pending.get(id);
+    if (!entry) return;
+    pending.delete(id);
+    clearTimeout(entry.timer);
+    entry.resolve(result);
+  });
+  worker.on("error", (error) => {
+    worker = null;
+    settleAll(error.message || OFFLINE_MESSAGE);
+  });
+  worker.on("exit", () => {
+    worker = null;
+    settleAll(OFFLINE_MESSAGE);
+  });
+  return worker;
+}
+
+/** Abandon a worker that is stuck inside a blocking network call. */
+function replaceWorker() {
+  const stuck = worker;
+  worker = null;
+  settleAll(OFFLINE_MESSAGE);
+  if (stuck) stuck.terminate().catch(() => {});
+}
+
+function call(op, payload = {}) {
+  const id = ++seq;
+  const target = ensureWorker();
+  return new Promise((resolve) => {
+    const timer = setTimeout(() => {
+      pending.delete(id);
+      offlineUntil = Date.now() + CIRCUIT_MS;
+      replaceWorker();
+      resolve({ ok: false, connected: false, offline: true, timedOut: true, path: dataDir(), error: OFFLINE_MESSAGE });
+    }, TIMEOUTS[op] ?? 8000);
+    pending.set(id, { resolve, timer });
+    try {
+      target.postMessage({ id, op, payload });
+    } catch (error) {
+      pending.delete(id);
+      clearTimeout(timer);
+      resolve({ ok: false, connected: false, offline: true, path: dataDir(), error: error.message });
+    }
+  });
+}
+
+const circuitOpen = () => Date.now() < offlineUntil;
+
+const offlineResult = () => ({
+  ok: false,
+  connected: false,
+  offline: true,
+  circuitOpen: true,
+  path: dataDir(),
+  error: OFFLINE_MESSAGE,
+});
+
+function record(result) {
+  if (result && result.ok) offlineUntil = 0;
+  else if (result && result.offline) offlineUntil = Date.now() + CIRCUIT_MS;
+  return result;
+}
 
 /**
- * Is the company network share reachable at all?
- *
- * Remote users can only see \\westrock.com\... while the corporate VPN is up.
- * We probe the parent share BEFORE creating anything, so a disconnected client
- * can never silently create a second, local "production" database.
+ * `force` (the user pressing Retry Connection / Sync) always closes the
+ * circuit breaker and re-probes the share immediately.
  */
-function reachable() {
-  const dir = resolveDataDir();
-  if (process.env.RPAHUB_DATA_DIR) return { ok: true };
-  const root = path.parse(dir).root && dir.startsWith("\\\\") ? SHARED_ROOT : path.dirname(dir);
-  try {
-    fs.accessSync(root, fs.constants.R_OK);
-    return { ok: true };
-  } catch {
-    try {
-      fs.accessSync(dir, fs.constants.R_OK);
-      return { ok: true };
-    } catch (error) {
-      return {
-        ok: false,
-        offline: true,
-        error:
-          "The RPAHUB shared database cannot currently be reached. If you are working remotely, connect to the company VPN and try again.",
-      };
-    }
-  }
+async function guarded(op, payload = {}) {
+  const force = Boolean(payload.force);
+  if (force) offlineUntil = 0;
+  if (!force && circuitOpen()) return offlineResult();
+  return record(await call(op, payload));
 }
 
-function ensureDir() {
-  const probe = reachable();
-  if (!probe.ok) {
-    const err = new Error(probe.error);
-    err.offline = true;
-    throw err;
-  }
-  const { dir } = paths();
-  fs.mkdirSync(dir, { recursive: true });
-  return dir;
-}
-
-const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
-
-async function acquireLock() {
-  const { lock } = paths();
-  for (let attempt = 0; attempt < 40; attempt++) {
-    try {
-      const handle = fs.openSync(lock, "wx");
-      fs.writeSync(handle, String(Date.now()));
-      fs.closeSync(handle);
-      return true;
-    } catch {
-      try {
-        const stat = fs.statSync(lock);
-        if (Date.now() - stat.mtimeMs > LOCK_STALE_MS) fs.unlinkSync(lock);
-      } catch {
-        /* lock disappeared — retry immediately */
-      }
-      await sleep(50 + Math.random() * 100);
-    }
-  }
-  return false;
-}
-
-function releaseLock() {
-  try {
-    fs.unlinkSync(paths().lock);
-  } catch {
-    /* already released */
-  }
-}
-
-function emptyEnvelope() {
-  return { schemaVersion: SCHEMA_VERSION, rev: 0, updatedAt: null, updatedBy: null, doc: null };
-}
-
-function readEnvelope() {
-  const { db } = paths();
-  if (!fs.existsSync(db)) return emptyEnvelope();
-  const raw = fs.readFileSync(db, "utf8");
-  if (!raw.trim()) return emptyEnvelope();
-  const parsed = JSON.parse(raw);
-  return { ...emptyEnvelope(), ...parsed };
-}
-
-/** Migrate an existing shared database forward. Never destroys data. */
-function migrate(envelope) {
-  if (!envelope.doc) return envelope;
-  let { doc } = envelope;
-  if (!Array.isArray(doc.tasks)) doc = { ...doc, tasks: [] };
-  if (!Array.isArray(doc.tombstones)) doc = { ...doc, tombstones: [] };
-  if (doc.messages) {
-    const { messages: _messages, ...rest } = doc;
-    doc = rest;
-  }
-  return { ...envelope, doc, schemaVersion: SCHEMA_VERSION };
-}
-
-function status() {
-  const { dir, db } = paths();
-  try {
-    ensureDir();
-    fs.accessSync(dir, fs.constants.R_OK | fs.constants.W_OK);
-    const exists = fs.existsSync(db);
-    const stat = exists ? fs.statSync(db) : null;
-    return {
-      ok: true,
-      connected: true,
-      path: dir,
-      file: db,
-      exists,
-      schemaVersion: SCHEMA_VERSION,
-      updatedAt: stat ? new Date(stat.mtimeMs).toISOString() : null,
-    };
-  } catch (error) {
-    return { ok: false, connected: false, offline: true, path: dir, file: db, error: error.message };
-  }
-}
-
-function read() {
-  try {
-    ensureDir();
-    const envelope = migrate(readEnvelope());
-    return { ok: true, connected: true, path: paths().dir, ...envelope };
-  } catch (error) {
-    return { ok: false, connected: false, offline: true, path: paths().dir, error: error.message };
-  }
-}
-
-async function write({ doc, baseRev, user }) {
-  try {
-    ensureDir();
-  } catch (error) {
-    return { ok: false, connected: false, offline: true, error: error.message };
-  }
-  const locked = await acquireLock();
-  if (!locked) return { ok: false, connected: true, error: "The shared database is busy. Please retry." };
-  try {
-    const current = migrate(readEnvelope());
-    if (current.doc && typeof baseRev === "number" && baseRev < current.rev) {
-      // Someone else committed first — hand the newer document back so the
-      // caller can merge rather than overwrite a colleague's work.
-      return { ok: false, conflict: true, connected: true, ...current };
-    }
-    const next = {
-      schemaVersion: SCHEMA_VERSION,
-      rev: (current.rev || 0) + 1,
-      updatedAt: new Date().toISOString(),
-      updatedBy: user || null,
-      doc,
-    };
-    const { db } = paths();
-    const tmp = `${db}.${process.pid}.tmp`;
-    fs.writeFileSync(tmp, JSON.stringify(next), "utf8");
-    fs.renameSync(tmp, db);
-    return { ok: true, connected: true, rev: next.rev, updatedAt: next.updatedAt, updatedBy: next.updatedBy };
-  } catch (error) {
-    return { ok: false, connected: false, offline: true, error: error.message };
-  } finally {
-    releaseLock();
-  }
-}
-
-module.exports = { status, read, write, reachable, SHARED_ROOT, DATA_DIR, DB_FILE, LOCK_FILE, SCHEMA_VERSION };
+module.exports = {
+  status: (payload = {}) => guarded("status", payload),
+  read: (payload = {}) => guarded("read", payload),
+  write: (payload = {}) => guarded("write", payload),
+  probe: (payload = {}) => guarded("probe", payload),
+  SHARED_ROOT,
+  DATA_DIR,
+  DB_FILE,
+  LOCK_FILE,
+  SCHEMA_VERSION,
+  OFFLINE_MESSAGE,
+};

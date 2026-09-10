@@ -9,6 +9,7 @@ import type {
   Stage,
   TaskRecord,
   Tombstone,
+  UnlinkedApproval,
   UserAccount,
 } from "./types";
 import { seedData, DEFAULT_OPTIONS, SHARED_WORKSPACE_PATH } from "./seed";
@@ -101,9 +102,9 @@ export const isReadOnly = () => connection.shared && connection.status === "offl
 export const OFFLINE_MESSAGE =
   "The RPAHUB shared database cannot currently be reached. If you are working remotely, connect to the company VPN and click Retry Connection.";
 
-/** Manual "Retry Connection" / "Sync" action. */
+/** Manual "Retry Connection" / "Sync" action — always re-probes the share. */
 export async function retryConnection() {
-  return syncNow();
+  return syncNow({ force: true });
 }
 
 /* ------------------------------------------------------------------ */
@@ -116,6 +117,7 @@ function normalize(parsed: AppData): AppData {
     ...base,
     ...parsed,
     tasks: parsed.tasks ?? [],
+    standaloneApprovals: parsed.standaloneApprovals ?? [],
     tombstones: parsed.tombstones ?? [],
     adminLog: parsed.adminLog ?? [],
     accounts: parsed.accounts ?? [],
@@ -175,6 +177,10 @@ export function mergeDocuments(remote: AppData, local: AppData): AppData {
     newer(ll.modifiedDate, rr.modifiedDate) ? ll : rr,
   );
 
+  const standaloneApprovals = mergeById<UnlinkedApproval>(r.standaloneApprovals, l.standaloneApprovals, (rr, ll) =>
+    newer(ll.modifiedDate, rr.modifiedDate) ? ll : rr,
+  ).filter((a) => !dead.has(`approval:${a.id}`));
+
   const adminLog = mergeById<AdminLogEntry>(r.adminLog, l.adminLog, (rr) => rr)
     .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
     .slice(0, ADMIN_LOG_LIMIT);
@@ -185,6 +191,7 @@ export function mergeDocuments(remote: AppData, local: AppData): AppData {
     tasks,
     accounts,
     adminLog,
+    standaloneApprovals,
     tombstones,
     settings: {
       ...r.settings,
@@ -223,6 +230,26 @@ function writeLocal() {
   }
 }
 
+/**
+ * Tell the user when a colleague changed a record they were also editing.
+ * Their newer version is kept — nothing is silently overwritten.
+ */
+function notifyIfOverwritten(localDoc: AppData, remoteDoc: AppData) {
+  const localById = new Map(localDoc.automations.map((a) => [a.id, a]));
+  const clashed = (remoteDoc.automations ?? []).find((r) => {
+    const l = localById.get(r.id);
+    return l && (r.rev ?? 0) > (l.rev ?? 0);
+  });
+  if (!clashed) return;
+  void import("sonner").then(({ toast }) =>
+    toast.warning("Updated by another user", {
+      id: "record-conflict",
+      description:
+        "This record was updated by another user while you were editing it. Please review the latest version before saving.",
+    }),
+  );
+}
+
 async function writeShared(desktop: Bridge): Promise<void> {
   if (writing) {
     writeQueued = true;
@@ -250,9 +277,16 @@ async function writeShared(desktop: Bridge): Promise<void> {
       }
       if (res?.conflict && res.doc) {
         // A colleague committed first: merge their document into ours and retry.
+        const before = state;
         state = mergeDocuments(res.doc as AppData, state);
         connection = { ...connection, rev: res.rev };
+        notifyIfOverwritten(before, res.doc as AppData);
         emit();
+        continue;
+      }
+      if (res?.busy) {
+        // Another workstation holds the short write lock — back off and retry.
+        await new Promise((r) => setTimeout(r, 250 + attempt * 250));
         continue;
       }
       setConnection({ status: "offline", error: res?.error ?? "The shared workspace is unavailable." });
@@ -332,43 +366,67 @@ export function getStorageHealth() {
 
 let syncTimer: ReturnType<typeof setInterval> | null = null;
 
-/** Pull the authoritative shared document and merge it into local state. */
-export async function syncNow(): Promise<WorkspaceConnection> {
+let syncInFlight: Promise<WorkspaceConnection> | null = null;
+
+/**
+ * Pull the authoritative shared document and merge remote changes in.
+ *
+ * Incremental: the background refresh only asks for changes made since the
+ * revision we already hold, so an unchanged database costs one tiny message
+ * instead of re-reading and re-merging the whole portfolio every minute.
+ * The renderer never waits on the network — all of this is asynchronous.
+ */
+export async function syncNow(opts: { background?: boolean; force?: boolean } = {}): Promise<WorkspaceConnection> {
   const desktop = bridge();
   if (!desktop) {
     writeLocal();
     setConnection({ status: "connected", lastSyncedAt: new Date().toISOString() });
     return connection;
   }
-  setConnection({ status: "syncing" });
-  try {
-    const res = await desktop.invoke("workspace.read");
-    if (!res?.ok) {
-      setConnection({ status: "offline", error: res?.error ?? "Shared workspace unavailable." });
+  // Never run two syncs at once; navigation and timers share the one in flight.
+  if (syncInFlight) return syncInFlight;
+  if (!opts.background) setConnection({ status: "syncing" });
+  syncInFlight = (async () => {
+    try {
+      const res = await desktop.invoke("workspace.read", {
+        sinceRev: connection.rev,
+        ...(opts.force ? { force: true } : {}),
+      });
+      if (!res?.ok) {
+        setConnection({ status: "offline", error: res?.error ?? "Shared workspace unavailable." });
+        return connection;
+      }
+      if (res.unchanged) {
+        // Nothing changed on the share: cheap acknowledgement only.
+        setConnection({ status: "connected", error: null, everSynced: true, lastSyncedAt: new Date().toISOString() });
+        return connection;
+      }
+      if (res.doc) {
+        state = mergeDocuments(res.doc as AppData, state);
+      }
+      connection = {
+        ...connection,
+        shared: true,
+        rev: res.rev ?? 0,
+        status: "connected",
+        error: null,
+        path: res.path ?? SHARED_WORKSPACE_PATH,
+        lastUpdatedAt: res.updatedAt ?? null,
+        lastUpdatedBy: res.updatedBy ?? null,
+        lastSyncedAt: new Date().toISOString(),
+        everSynced: true,
+        readOnly: false,
+      };
+      emit();
       return connection;
+    } catch (error) {
+      setConnection({ status: "offline", error: (error as Error).message });
+      return connection;
+    } finally {
+      syncInFlight = null;
     }
-    if (res.doc) {
-      state = mergeDocuments(res.doc as AppData, state);
-    }
-    connection = {
-      ...connection,
-      shared: true,
-      rev: res.rev ?? 0,
-      status: "connected",
-      error: null,
-      path: res.path ?? SHARED_WORKSPACE_PATH,
-      lastUpdatedAt: res.updatedAt ?? null,
-      lastUpdatedBy: res.updatedBy ?? null,
-      lastSyncedAt: new Date().toISOString(),
-      everSynced: true,
-      readOnly: false,
-    };
-    emit();
-    return connection;
-  } catch (error) {
-    setConnection({ status: "offline", error: (error as Error).message });
-    return connection;
-  }
+  })();
+  return syncInFlight;
 }
 
 export async function hydrate() {
@@ -377,8 +435,10 @@ export async function hydrate() {
   const desktop = bridge();
   if (desktop) {
     connection = { ...connection, shared: true };
-    await syncNow();
-    if (!syncTimer) syncTimer = setInterval(() => void syncNow(), 60000);
+    // Do not block the first paint on the network share.
+    void syncNow();
+    // Exactly ONE background refresh timer for the whole application.
+    if (!syncTimer) syncTimer = setInterval(() => void syncNow({ background: true }), 60000);
     emit();
     return;
   }
@@ -604,21 +664,72 @@ export const actions = {
       ),
     });
   },
+  /** Edit an existing weekly update (same shared source as the main menu). */
+  editUpdate(automationId: string, updateId: string, patch: Partial<Automation["updates"][number]>, user: string) {
+    update(automationId, (r) =>
+      touch({ ...r, updates: r.updates.map((u) => (u.id === updateId ? { ...u, ...patch } : u)) }, user, [
+        histEntry(user, "Weekly update edited"),
+      ]),
+    );
+  },
   addApproval(id: string, approval: Omit<Approval, "id">, user: string) {
     update(id, (r) =>
-      touch({ ...r, approvals: [...(r.approvals ?? []), { ...approval, id: uid("ap") }] }, user, [
-        histEntry(user, `Approval requested: ${approval.type}`),
-      ]),
+      touch(
+        {
+          ...r,
+          approvals: [...(r.approvals ?? []), { ...approval, id: uid("ap"), modifiedDate: new Date().toISOString() }],
+        },
+        user,
+        [histEntry(user, `Approval requested: ${approval.type}`)],
+      ),
     );
   },
   updateApproval(id: string, approvalId: string, patch: Partial<Approval>, user: string) {
     update(id, (r) =>
       touch(
-        { ...r, approvals: (r.approvals ?? []).map((ap) => (ap.id === approvalId ? { ...ap, ...patch } : ap)) },
+        {
+          ...r,
+          approvals: (r.approvals ?? []).map((ap) =>
+            ap.id === approvalId ? { ...ap, ...patch, modifiedDate: new Date().toISOString() } : ap,
+          ),
+        },
         user,
         [histEntry(user, `Approval updated${patch.status ? `: ${patch.status}` : ""}`)],
       ),
     );
+  },
+  removeApproval(id: string, approvalId: string, user: string) {
+    update(id, (r) =>
+      touch({ ...r, approvals: (r.approvals ?? []).filter((ap) => ap.id !== approvalId) }, user, [
+        histEntry(user, "Approval removed"),
+      ]),
+    );
+  },
+  /** Track an approval that is not linked to a portfolio automation. */
+  addStandaloneApproval(approval: Omit<UnlinkedApproval, "id">, user: string) {
+    const entry: UnlinkedApproval = { ...approval, id: uid("ap"), modifiedDate: new Date().toISOString() };
+    setState({
+      ...state,
+      standaloneApprovals: [entry, ...(state.standaloneApprovals ?? [])],
+      adminLog: [adminEntry(user, "Approval tracked", `${approval.type} · ${approval.subject}`), ...state.adminLog],
+    });
+    return entry;
+  },
+  updateStandaloneApproval(approvalId: string, patch: Partial<UnlinkedApproval>, user: string) {
+    setState({
+      ...state,
+      standaloneApprovals: (state.standaloneApprovals ?? []).map((ap) =>
+        ap.id === approvalId ? { ...ap, ...patch, modifiedDate: new Date().toISOString() } : ap,
+      ),
+      adminLog: [adminEntry(user, "Approval updated", patch.status ?? ""), ...state.adminLog],
+    });
+  },
+  removeStandaloneApproval(approvalId: string, user: string) {
+    setState({
+      ...state,
+      standaloneApprovals: (state.standaloneApprovals ?? []).filter((ap) => ap.id !== approvalId),
+      tombstones: [...state.tombstones, tombstone("approval", approvalId, user)],
+    });
   },
   addDocument(id: string, doc: Omit<Automation["documents"][number], "id" | "uploadedBy" | "uploadedDate">, user: string) {
     update(id, (r) =>
