@@ -83,23 +83,32 @@ export function ApprovalDialog({
 
   const save = () => {
     if (readOnly) return;
-    if (!type.trim()) return toast.error("Approval Type is required.");
-    if (!approver.trim()) return toast.error("Approver is required.");
-    if (!automationId && !subject.trim()) return toast.error("Enter what this approval is for.");
+    if (!type.trim()) {
+      toast.error("Approval Type is required.");
+      return;
+    }
+    if (!approver.trim()) {
+      toast.error("Approver is required.");
+      return;
+    }
+    if (!automationId && !subject.trim()) {
+      toast.error("Enter what this approval is for.");
+      return;
+    }
 
     const decided = status !== "Pending";
     const payload = {
       type: type.trim(),
-      stage: stage.trim() || undefined,
+      stage: stage.trim(),
       status,
       approver: approver.trim(),
       requestedBy: requestedBy.trim() || user,
       requestedDate: requestedDate || today(),
-      dueDate: dueDate || undefined,
-      decisionDate: decided ? decisionDate || today() : undefined,
-      description: description.trim() || undefined,
-      decisionComments: comments.trim() || undefined,
-      evidenceLink: evidence.trim() || undefined,
+      dueDate,
+      decisionDate: decided ? decisionDate || today() : "",
+      description: description.trim(),
+      decisionComments: comments.trim(),
+      evidenceLink: evidence.trim(),
     };
 
     if (existing) {
