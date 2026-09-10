@@ -240,7 +240,7 @@ export function healthTrend(records: Automation[], weeks = 12) {
 /** Lifecycle categories actually present in the data, in a stable order. */
 export function lifecycleCategories(records: Automation[]) {
   const preferred = ["Discovery", "Pipeline", "Deployed", "Archived"];
-  const found = new Set(records.map((a) => lifecycleCategory(a)).filter(Boolean));
+  const found = new Set<string>(records.map((a) => String(lifecycleCategory(a))).filter(Boolean));
   const ordered = preferred.filter((c) => found.has(c));
   [...found].sort().forEach((c) => {
     if (!ordered.includes(c)) ordered.push(c);
