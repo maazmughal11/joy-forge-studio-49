@@ -1,3 +1,4 @@
+import { isBuiltinAdmin } from "@/lib/auth";
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
 import { useAppData, actions } from "@/data";
@@ -35,7 +36,7 @@ export function AssignTaskDialog({
   const [search, setSearch] = useState("");
 
   const people = data.accounts
-    .filter((a) => a.active && !a.deleted && a.displayName !== assignedBy)
+    .filter((a) => a.active && !a.deleted && a.displayName !== assignedBy && !isBuiltinAdmin(a))
     .map((a) => a.displayName);
 
   const records = useMemo(() => {

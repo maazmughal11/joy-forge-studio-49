@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
-import { Lock, LogIn, ShieldCheck, UserPlus } from "lucide-react";
+import { Lock, LogIn } from "lucide-react";
 import logoUrl from "@/assets/smurfit-westrock-logo-light2.png";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { actions, useAppData } from "@/data";
 import { authService } from "@/services/auth-service";
-import { isValidPin, suggestUsername, useSession } from "@/lib/auth";
+import { useSession } from "@/lib/auth";
 import type { UserAccount } from "@/domain/models";
 
 const initials = (name: string) =>
@@ -34,116 +34,6 @@ function Branding({ subtitle }: { subtitle: string }) {
       <h1 className="mt-6 text-2xl font-semibold tracking-tight">Automation CoE</h1>
       <p className="text-sm text-sidebar-foreground/60">{subtitle}</p>
     </div>
-  );
-}
-
-/* ---------------- First run: create administrator ---------------- */
-
-function SetupScreen() {
-  const [first, setFirst] = useState("");
-  const [last, setLast] = useState("");
-  const [username, setUsername] = useState("");
-  const [touched, setTouched] = useState(false);
-  const [pin, setPin] = useState("");
-  const [confirm, setConfirm] = useState("");
-  const [error, setError] = useState("");
-  const [busy, setBusy] = useState(false);
-
-  const suggested = suggestUsername(first, last);
-  const effectiveUsername = touched ? username : suggested;
-
-  const submit = async () => {
-    setError("");
-    if (!first.trim() || !last.trim()) return setError("Enter a first and last name.");
-    if (!effectiveUsername) return setError("A username is required.");
-    if (!isValidPin(pin)) return setError("The PIN must be exactly 4 digits.");
-    if (pin !== confirm) return setError("The PINs do not match.");
-    setBusy(true);
-    try {
-      const account = await authService.createAccount(
-        {
-          firstName: first.trim(),
-          lastName: last.trim(),
-          username: effectiveUsername,
-          pin,
-          role: "Administrator",
-        },
-        `${first.trim()} ${last.trim()}`,
-      );
-      actions.logAudit(account.displayName, "Administrator account created (first run)", account.username);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Could not create the account.");
-    }
-    setBusy(false);
-  };
-
-  return (
-    <Backdrop>
-      <Branding subtitle="First-time setup" />
-      <div className="rounded-xl border border-sidebar-border bg-sidebar-accent/40 p-6 shadow-2xl backdrop-blur">
-        <h2 className="flex items-center gap-2 text-sm font-semibold">
-          <ShieldCheck className="h-4 w-4 text-primary" /> Create administrator account
-        </h2>
-        <p className="mt-1 text-xs text-sidebar-foreground/60">
-          This one-time setup creates the first administrator. Additional users are added later in Settings.
-        </p>
-        <div className="mt-5 space-y-3">
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <Label htmlFor="fn" className="text-xs">First name</Label>
-              <Input id="fn" value={first} onChange={(e) => setFirst(e.target.value)} className="mt-1 bg-card text-foreground" />
-            </div>
-            <div>
-              <Label htmlFor="ln" className="text-xs">Last name</Label>
-              <Input id="ln" value={last} onChange={(e) => setLast(e.target.value)} className="mt-1 bg-card text-foreground" />
-            </div>
-          </div>
-          <div>
-            <Label htmlFor="un" className="text-xs">Username</Label>
-            <Input
-              id="un"
-              value={effectiveUsername}
-              placeholder="firstname.lastname"
-              onChange={(e) => {
-                setTouched(true);
-                setUsername(e.target.value.toLowerCase());
-              }}
-              className="mt-1 bg-card font-mono text-foreground"
-            />
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <Label htmlFor="p1" className="text-xs">4-digit PIN</Label>
-              <Input
-                id="p1"
-                type="password"
-                inputMode="numeric"
-                maxLength={4}
-                value={pin}
-                onChange={(e) => setPin(e.target.value.replace(/\D/g, "").slice(0, 4))}
-                className="mt-1 bg-card text-center tracking-[0.5em] text-foreground"
-              />
-            </div>
-            <div>
-              <Label htmlFor="p2" className="text-xs">Confirm PIN</Label>
-              <Input
-                id="p2"
-                type="password"
-                inputMode="numeric"
-                maxLength={4}
-                value={confirm}
-                onChange={(e) => setConfirm(e.target.value.replace(/\D/g, "").slice(0, 4))}
-                className="mt-1 bg-card text-center tracking-[0.5em] text-foreground"
-              />
-            </div>
-          </div>
-          {error ? <p className="text-xs text-destructive">{error}</p> : null}
-          <Button className="w-full" disabled={busy} onClick={submit}>
-            <UserPlus className="h-4 w-4" /> Create administrator
-          </Button>
-        </div>
-      </div>
-    </Backdrop>
   );
 }
 
@@ -258,7 +148,6 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
 
   useEffect(() => setMounted(true), []);
   if (!mounted) return <div className="min-h-screen bg-sidebar" />;
-  if (data.accounts.length === 0) return <SetupScreen />;
 
   const account = session ? data.accounts.find((a) => a.id === session.userId) ?? null : null;
   if (!session || !account || !account.active) return <SignInScreen />;

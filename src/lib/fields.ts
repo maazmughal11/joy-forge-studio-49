@@ -1,4 +1,4 @@
-import type { Automation, FieldValue } from "./types";
+import type { Automation, FieldValue, FormConfig } from "./types";
 
 export type FieldType = "text" | "textarea" | "number" | "date" | "select" | "yesno" | "url";
 
@@ -176,4 +176,32 @@ export function priorityFromScoring(s: Automation["scoring"]) {
   if (score >= 8) return "High";
   if (score >= 4) return "Medium";
   return "Low";
+}
+
+/**
+ * Applies the administrator's form configuration to a field list.
+ * Only presentation changes — internal field ids and stored values are
+ * never renamed, so existing data stays intact.
+ */
+export function applyFormConfig(
+  fields: FieldDef[],
+  config: FormConfig | undefined,
+  form: string,
+): FieldDef[] {
+  const entries = config?.[form]?.fields ?? [];
+  if (entries.length === 0) return fields;
+  const byId = new Map(entries.map((e) => [e.id, e]));
+  return fields
+    .filter((f) => byId.get(f.key)?.visible !== false)
+    .map((f) => {
+      const cfg = byId.get(f.key);
+      if (!cfg) return f;
+      return {
+        ...f,
+        ...(cfg.label ? { label: cfg.label } : {}),
+        ...(cfg.section ? { section: cfg.section } : {}),
+        ...(cfg.required ? { optional: false } : {}),
+      };
+    })
+    .sort((a, b) => (byId.get(a.key)?.order ?? 0) - (byId.get(b.key)?.order ?? 0));
 }

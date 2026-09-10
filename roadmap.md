@@ -14,3 +14,12 @@
 - [x] Record Last edited by / created by, stale-edit conflict detection
 - [x] PDF/Print through Electron IPC + print CSS
 - [x] Subtle page transitions
+
+## Targeted refinements (final pass)
+- Async shared-workspace worker, circuit breaker, incremental revision sync — done
+- Weekly updates: searchable automation picker, one shared source, full fields in records — done
+- Approvals: linked + unlinked tracking, stage/type dropdowns, computed days waiting — done
+- Lifecycle-driven pipeline reporting — done
+- "Other / enter manually" on dropdown fields — done
+- Single hidden built-in System Admin, first-run setup removed — done
+- Admin-only Form Editor (labels, order, section, visibility, required) — done

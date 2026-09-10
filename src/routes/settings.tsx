@@ -5,6 +5,7 @@ import { toast } from "sonner";
 import { AppShell } from "@/components/AppShell";
 import { UsersAdmin } from "@/components/UsersAdmin";
 import { ImportCenter } from "@/components/ImportCenter";
+import { FormEditor } from "@/components/FormEditor";
 import { useAuth } from "@/hooks/useAuth";
 import { useAppData, useConnection, actions, getStorageHealth } from "@/data";
 import { Button } from "@/components/ui/button";
@@ -95,6 +96,12 @@ function SettingsPage() {
       <div className="mb-4">
         <UsersAdmin actor={user} />
       </div>
+
+      {isAdmin ? (
+        <div className="mb-4">
+          <FormEditor readOnly={connection.status === "offline"} />
+        </div>
+      ) : null}
 
       <div className="grid gap-4 lg:grid-cols-2">
         <section className="card-surface p-4">
