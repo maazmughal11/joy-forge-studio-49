@@ -1,4 +1,4 @@
-import type { Approval, Automation, TaskRecord } from "./types";
+import type { Approval, Automation, TaskRecord, UnlinkedApproval } from "./types";
 import { completeness, EXPECTED_DOCS, GOVERNANCE_FIELDS, isFilled } from "./fields";
 
 export const nameOf = (a: Automation) => String(a.data['opportunityName'] ?? "Untitled opportunity");
