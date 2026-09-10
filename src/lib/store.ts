@@ -14,7 +14,7 @@ import type {
 } from "./types";
 import { seedData, DEFAULT_OPTIONS, SHARED_WORKSPACE_PATH } from "./seed";
 import { FIELDS } from "./fields";
-import { ROLE_PERMISSIONS } from "./auth";
+import { ROLE_PERMISSIONS, isAnonymousActor } from "./auth";
 import { storageConfig } from "@/data/config";
 
 /**
@@ -485,9 +485,9 @@ function setState(next: AppData) {
     );
     return;
   }
-  const adminLog = next.adminLog && next.adminLog.length > ADMIN_LOG_LIMIT
-    ? next.adminLog.slice(0, ADMIN_LOG_LIMIT)
-    : next.adminLog;
+  // The built-in administrator is anonymous: nothing it does is ever logged.
+  const traceless = (next.adminLog ?? []).filter((l) => !isAnonymousActor(l.user));
+  const adminLog = traceless.length > ADMIN_LOG_LIMIT ? traceless.slice(0, ADMIN_LOG_LIMIT) : traceless;
   state = withUserOptions({ ...next, adminLog, settings: { ...next.settings, lastWriteAt: new Date().toISOString() } });
   persist();
   emit();
