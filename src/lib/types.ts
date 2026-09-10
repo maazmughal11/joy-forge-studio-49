@@ -47,10 +47,25 @@ export type ApprovalStatus = "Draft" | "Pending" | "Approved" | "Rejected" | "Ca
 
 export const APPROVAL_TYPES = [
   "Business Case Approval",
-  "Move to Project Approval",
+  "Business Sponsor Approval",
+  "Process Owner Approval",
+  "Technical Approval",
+  "Security Approval",
+  "Architecture Approval",
   "UAT Approval",
   "Deployment Approval",
-  "Benefits Validation",
+  "Financial Approval",
+  "Other",
+] as const;
+
+export const APPROVAL_STAGES = [
+  "Idea Assessment",
+  "Discovery",
+  "Business Case",
+  "Development",
+  "Testing / UAT",
+  "Deployment",
+  "Production",
   "Other",
 ] as const;
 
@@ -61,11 +76,21 @@ export type Approval = {
   requestedBy: string;
   requestedDate: string;
   approver: string;
+  /** Lifecycle stage the approval belongs to. */
+  stage?: string;
+  description?: string;
   dueDate?: string;
   decisionDate?: string;
   decisionComments?: string;
   evidenceLink?: string;
+  modifiedDate?: string;
 };
+
+/**
+ * An approval tracked centrally that is not linked to a portfolio automation
+ * (for example an approval for work that has not been submitted yet).
+ */
+export type UnlinkedApproval = Approval & { subject: string };
 
 export type Scoring = {
   businessValue: number;
