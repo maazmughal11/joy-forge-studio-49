@@ -97,11 +97,6 @@ function SettingsPage() {
         <UsersAdmin actor={user} />
       </div>
 
-      {isAdmin ? (
-        <div className="mb-4">
-          <FormEditor readOnly={connection.status === "offline"} />
-        </div>
-      ) : null}
 
       <div className="grid gap-4 lg:grid-cols-2">
         <section className="card-surface p-4">
