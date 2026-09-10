@@ -9,6 +9,7 @@ import type {
   Stage,
   TaskRecord,
   Tombstone,
+  UnlinkedApproval,
   UserAccount,
 } from "./types";
 import { seedData, DEFAULT_OPTIONS, SHARED_WORKSPACE_PATH } from "./seed";
@@ -190,6 +191,7 @@ export function mergeDocuments(remote: AppData, local: AppData): AppData {
     tasks,
     accounts,
     adminLog,
+    standaloneApprovals,
     tombstones,
     settings: {
       ...r.settings,
