@@ -127,11 +127,13 @@ app.whenReady().then(() => {
     const { channel, payload } = message ?? {};
     switch (channel) {
       case "app.paths":
-        return { userData: app.getPath("userData"), workspace: workspace.status() };
+        return { userData: app.getPath("userData"), workspace: await workspace.status() };
       case "workspace.status":
-        return workspace.status();
+        return workspace.status(payload ?? {});
+      case "workspace.probe":
+        return workspace.probe(payload ?? {});
       case "workspace.read":
-        return workspace.read();
+        return workspace.read(payload ?? {});
       case "workspace.write":
         return workspace.write(payload ?? {});
       case "print.pdf":
