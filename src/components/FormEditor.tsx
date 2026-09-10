@@ -63,6 +63,42 @@ export function FormEditor({ readOnly }: { readOnly?: boolean }) {
     save(next);
   };
 
+  const remove = (row: FormFieldConfig) => {
+    if (row.custom) {
+      save(rows.filter((r) => r.id !== row.id));
+      toast.success(`"${row.label}" removed from this form`);
+      return;
+    }
+    save(rows.map((r) => (r.id === row.id ? { ...r, visible: false } : r)));
+    toast.success(`"${row.label}" removed from this form — existing information is kept`);
+  };
+
+  const addField = () => {
+    const label = newLabel.trim();
+    if (!label) return;
+    const slug = label.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "");
+    const id = `custom_${slug || Date.now()}`;
+    if (rows.some((r) => r.id === id)) {
+      toast.error("A field with that name already exists on this form");
+      return;
+    }
+    const entry: FormFieldConfig = {
+      id,
+      label,
+      section: newSection,
+      type: newType,
+      visible: true,
+      required: false,
+      custom: true,
+    };
+    const index = rows.map((r) => r.section).lastIndexOf(newSection);
+    const next = [...rows];
+    next.splice(index >= 0 ? index + 1 : next.length, 0, entry);
+    save(next);
+    setNewLabel("");
+    toast.success(`"${label}" added to ${newSection}`);
+  };
+
   const reset = () => {
     const nextConfig: FormConfig = { ...(config ?? {}) };
     delete nextConfig[form];
