@@ -332,43 +332,67 @@ export function getStorageHealth() {
 
 let syncTimer: ReturnType<typeof setInterval> | null = null;
 
-/** Pull the authoritative shared document and merge it into local state. */
-export async function syncNow(): Promise<WorkspaceConnection> {
+let syncInFlight: Promise<WorkspaceConnection> | null = null;
+
+/**
+ * Pull the authoritative shared document and merge remote changes in.
+ *
+ * Incremental: the background refresh only asks for changes made since the
+ * revision we already hold, so an unchanged database costs one tiny message
+ * instead of re-reading and re-merging the whole portfolio every minute.
+ * The renderer never waits on the network — all of this is asynchronous.
+ */
+export async function syncNow(opts: { background?: boolean; force?: boolean } = {}): Promise<WorkspaceConnection> {
   const desktop = bridge();
   if (!desktop) {
     writeLocal();
     setConnection({ status: "connected", lastSyncedAt: new Date().toISOString() });
     return connection;
   }
-  setConnection({ status: "syncing" });
-  try {
-    const res = await desktop.invoke("workspace.read");
-    if (!res?.ok) {
-      setConnection({ status: "offline", error: res?.error ?? "Shared workspace unavailable." });
+  // Never run two syncs at once; navigation and timers share the one in flight.
+  if (syncInFlight) return syncInFlight;
+  if (!opts.background) setConnection({ status: "syncing" });
+  syncInFlight = (async () => {
+    try {
+      const res = await desktop.invoke("workspace.read", {
+        sinceRev: connection.rev,
+        ...(opts.force ? { force: true } : {}),
+      });
+      if (!res?.ok) {
+        setConnection({ status: "offline", error: res?.error ?? "Shared workspace unavailable." });
+        return connection;
+      }
+      if (res.unchanged) {
+        // Nothing changed on the share: cheap acknowledgement only.
+        setConnection({ status: "connected", error: null, everSynced: true, lastSyncedAt: new Date().toISOString() });
+        return connection;
+      }
+      if (res.doc) {
+        state = mergeDocuments(res.doc as AppData, state);
+      }
+      connection = {
+        ...connection,
+        shared: true,
+        rev: res.rev ?? 0,
+        status: "connected",
+        error: null,
+        path: res.path ?? SHARED_WORKSPACE_PATH,
+        lastUpdatedAt: res.updatedAt ?? null,
+        lastUpdatedBy: res.updatedBy ?? null,
+        lastSyncedAt: new Date().toISOString(),
+        everSynced: true,
+        readOnly: false,
+      };
+      emit();
       return connection;
+    } catch (error) {
+      setConnection({ status: "offline", error: (error as Error).message });
+      return connection;
+    } finally {
+      syncInFlight = null;
     }
-    if (res.doc) {
-      state = mergeDocuments(res.doc as AppData, state);
-    }
-    connection = {
-      ...connection,
-      shared: true,
-      rev: res.rev ?? 0,
-      status: "connected",
-      error: null,
-      path: res.path ?? SHARED_WORKSPACE_PATH,
-      lastUpdatedAt: res.updatedAt ?? null,
-      lastUpdatedBy: res.updatedBy ?? null,
-      lastSyncedAt: new Date().toISOString(),
-      everSynced: true,
-      readOnly: false,
-    };
-    emit();
-    return connection;
-  } catch (error) {
-    setConnection({ status: "offline", error: (error as Error).message });
-    return connection;
-  }
+  })();
+  return syncInFlight;
 }
 
 export async function hydrate() {
@@ -377,8 +401,10 @@ export async function hydrate() {
   const desktop = bridge();
   if (desktop) {
     connection = { ...connection, shared: true };
-    await syncNow();
-    if (!syncTimer) syncTimer = setInterval(() => void syncNow(), 60000);
+    // Do not block the first paint on the network share.
+    void syncNow();
+    // Exactly ONE background refresh timer for the whole application.
+    if (!syncTimer) syncTimer = setInterval(() => void syncNow({ background: true }), 60000);
     emit();
     return;
   }
