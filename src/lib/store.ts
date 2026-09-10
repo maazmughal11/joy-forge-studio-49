@@ -664,21 +664,72 @@ export const actions = {
       ),
     });
   },
+  /** Edit an existing weekly update (same shared source as the main menu). */
+  editUpdate(automationId: string, updateId: string, patch: Partial<Automation["updates"][number]>, user: string) {
+    update(automationId, (r) =>
+      touch({ ...r, updates: r.updates.map((u) => (u.id === updateId ? { ...u, ...patch } : u)) }, user, [
+        histEntry(user, "Weekly update edited"),
+      ]),
+    );
+  },
   addApproval(id: string, approval: Omit<Approval, "id">, user: string) {
     update(id, (r) =>
-      touch({ ...r, approvals: [...(r.approvals ?? []), { ...approval, id: uid("ap") }] }, user, [
-        histEntry(user, `Approval requested: ${approval.type}`),
-      ]),
+      touch(
+        {
+          ...r,
+          approvals: [...(r.approvals ?? []), { ...approval, id: uid("ap"), modifiedDate: new Date().toISOString() }],
+        },
+        user,
+        [histEntry(user, `Approval requested: ${approval.type}`)],
+      ),
     );
   },
   updateApproval(id: string, approvalId: string, patch: Partial<Approval>, user: string) {
     update(id, (r) =>
       touch(
-        { ...r, approvals: (r.approvals ?? []).map((ap) => (ap.id === approvalId ? { ...ap, ...patch } : ap)) },
+        {
+          ...r,
+          approvals: (r.approvals ?? []).map((ap) =>
+            ap.id === approvalId ? { ...ap, ...patch, modifiedDate: new Date().toISOString() } : ap,
+          ),
+        },
         user,
         [histEntry(user, `Approval updated${patch.status ? `: ${patch.status}` : ""}`)],
       ),
     );
+  },
+  removeApproval(id: string, approvalId: string, user: string) {
+    update(id, (r) =>
+      touch({ ...r, approvals: (r.approvals ?? []).filter((ap) => ap.id !== approvalId) }, user, [
+        histEntry(user, "Approval removed"),
+      ]),
+    );
+  },
+  /** Track an approval that is not linked to a portfolio automation. */
+  addStandaloneApproval(approval: Omit<UnlinkedApproval, "id">, user: string) {
+    const entry: UnlinkedApproval = { ...approval, id: uid("ap"), modifiedDate: new Date().toISOString() };
+    setState({
+      ...state,
+      standaloneApprovals: [entry, ...(state.standaloneApprovals ?? [])],
+      adminLog: [adminEntry(user, "Approval tracked", `${approval.type} · ${approval.subject}`), ...state.adminLog],
+    });
+    return entry;
+  },
+  updateStandaloneApproval(approvalId: string, patch: Partial<UnlinkedApproval>, user: string) {
+    setState({
+      ...state,
+      standaloneApprovals: (state.standaloneApprovals ?? []).map((ap) =>
+        ap.id === approvalId ? { ...ap, ...patch, modifiedDate: new Date().toISOString() } : ap,
+      ),
+      adminLog: [adminEntry(user, "Approval updated", patch.status ?? ""), ...state.adminLog],
+    });
+  },
+  removeStandaloneApproval(approvalId: string, user: string) {
+    setState({
+      ...state,
+      standaloneApprovals: (state.standaloneApprovals ?? []).filter((ap) => ap.id !== approvalId),
+      tombstones: [...state.tombstones, tombstone("approval", approvalId, user)],
+    });
   },
   addDocument(id: string, doc: Omit<Automation["documents"][number], "id" | "uploadedBy" | "uploadedDate">, user: string) {
     update(id, (r) =>
