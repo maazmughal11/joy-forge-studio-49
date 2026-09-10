@@ -134,6 +134,16 @@ export const BUILTIN_ADMIN_PASSWORD = "admin";
 export const isBuiltinAdmin = (account: { username?: string } | null | undefined) =>
   account?.username?.toLowerCase() === BUILTIN_ADMIN_USERNAME;
 
+/**
+ * The built-in administrator works anonymously: it is never listed as a user,
+ * never records a last login and never appears in audit trails or record
+ * history. Activity performed while signed in as this account leaves no trace.
+ */
+export const ANONYMOUS_ACTOR_NAME = "System Administrator";
+
+export const isAnonymousActor = (name: string | null | undefined) =>
+  (name ?? "").trim().toLowerCase() === ANONYMOUS_ACTOR_NAME.toLowerCase();
+
 const enc = new TextEncoder();
 
 function toHex(buf: ArrayBuffer) {

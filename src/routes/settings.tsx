@@ -284,6 +284,12 @@ function SettingsPage() {
           <OptionEditor key={key} listKey={key} values={s.options[key] ?? []} />
         ))}
       </div>
+
+      {isAdmin ? (
+        <div className="mt-6">
+          <FormEditor readOnly={connection.status === "offline"} />
+        </div>
+      ) : null}
     </AppShell>
   );
 }
