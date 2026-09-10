@@ -14,6 +14,15 @@ const FORMS = [
   { key: "project", label: "Project form" },
 ] as const;
 
+const NEW_FIELD_TYPES = [
+  { key: "text", label: "Short text" },
+  { key: "textarea", label: "Long text" },
+  { key: "number", label: "Number" },
+  { key: "date", label: "Date" },
+  { key: "yesno", label: "Yes / No" },
+  { key: "url", label: "Link" },
+] as const;
+
 /**
  * Administrator-only editor for how record forms are presented.
  * Labels, order, section and visibility are configurable; the underlying
