@@ -504,6 +504,10 @@ function adminEntry(user: string, action: string, detail?: string): AdminLogEntr
 }
 
 function touch(record: Automation, user: string, entries: HistoryEntry[]): Automation {
+  // Anonymous administrator: change the data, but leave no attribution trail.
+  if (isAnonymousActor(user)) {
+    return { ...record, rev: (record.rev ?? 0) + 1 };
+  }
   return {
     ...record,
     modifiedBy: user,
