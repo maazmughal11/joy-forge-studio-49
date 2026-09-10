@@ -116,6 +116,7 @@ function normalize(parsed: AppData): AppData {
     ...base,
     ...parsed,
     tasks: parsed.tasks ?? [],
+    standaloneApprovals: parsed.standaloneApprovals ?? [],
     tombstones: parsed.tombstones ?? [],
     adminLog: parsed.adminLog ?? [],
     accounts: parsed.accounts ?? [],
@@ -174,6 +175,10 @@ export function mergeDocuments(remote: AppData, local: AppData): AppData {
   const accounts = mergeById<UserAccount>(r.accounts, l.accounts, (rr, ll) =>
     newer(ll.modifiedDate, rr.modifiedDate) ? ll : rr,
   );
+
+  const standaloneApprovals = mergeById<UnlinkedApproval>(r.standaloneApprovals, l.standaloneApprovals, (rr, ll) =>
+    newer(ll.modifiedDate, rr.modifiedDate) ? ll : rr,
+  ).filter((a) => !dead.has(`approval:${a.id}`));
 
   const adminLog = mergeById<AdminLogEntry>(r.adminLog, l.adminLog, (rr) => rr)
     .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
