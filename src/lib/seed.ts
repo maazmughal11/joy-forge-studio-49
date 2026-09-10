@@ -1,4 +1,4 @@
-import type { AppData } from "./types";
+import { APPROVAL_STAGES, APPROVAL_TYPES, type AppData } from "./types";
 
 /**
  * Production defaults.
@@ -18,7 +18,8 @@ export const DEFAULT_OPTIONS: Record<string, string[]> = {
   pasStatuses: ["Not Started", "Submitted", "In Review", "Approved", "Rejected"],
   rpaReasons: ["High volume, rule-based", "Repetitive manual data entry", "Multiple system touchpoints", "Error-prone process", "Compliance / audit driven", "Seasonal peak workload"],
   documentTypes: ["SOP", "Process Flow", "Business Case", "PDD", "SDD", "UAT Evidence", "Approval", "Deployment Plan"],
-  approvalTypes: ["Business Case Approval", "Move to Project Approval", "UAT Approval", "Deployment Approval", "Benefits Validation", "Other"],
+  approvalTypes: [...APPROVAL_TYPES],
+  approvalStages: [...APPROVAL_STAGES],
 };
 
 /** Assignable people are derived from active user accounts, never hard-coded. */
@@ -40,6 +41,7 @@ export function seedData(): AppData {
       workspaceLock: null,
     },
     automations: [],
+    standaloneApprovals: [],
     tasks: [],
     tombstones: [],
     adminLog: [],
