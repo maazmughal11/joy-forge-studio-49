@@ -22,6 +22,9 @@ const FORMS = [
 export function FormEditor({ readOnly }: { readOnly?: boolean }) {
   const data = useAppData();
   const [form, setForm] = useState<string>("idea");
+  const [newLabel, setNewLabel] = useState("");
+  const [newType, setNewType] = useState<string>("text");
+  const [newSection, setNewSection] = useState<string>(SECTIONS[0]);
   const config = data.settings.formConfig;
 
   const rows = useMemo<FormFieldConfig[]>(() => {
