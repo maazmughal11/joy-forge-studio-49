@@ -9,7 +9,8 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { FieldInput } from "@/components/FieldInput";
 import { useAppData, useAutomation, actions } from "@/data";
 import { SECTIONS, completeness, fieldsForStage, priorityFromScoring } from "@/lib/fields";
-import { moveBlockers, nameOf } from "@/lib/derive";
+import { approvalDaysWaiting, moveBlockers, nameOf } from "@/lib/derive";
+import { ApprovalDialog, type ApprovalDraft } from "@/components/ApprovalDialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -163,6 +164,7 @@ function RecordPage() {
           <TabsList>
             <TabsTrigger value="details">Details</TabsTrigger>
             <TabsTrigger value="updates">Weekly Updates</TabsTrigger>
+            <TabsTrigger value="approvals">Approvals</TabsTrigger>
             <TabsTrigger value="documents">Documents</TabsTrigger>
             <TabsTrigger value="comments">Comments</TabsTrigger>
             <TabsTrigger value="history">History</TabsTrigger>
@@ -194,6 +196,10 @@ function RecordPage() {
 
           <TabsContent value="updates">
             <WeeklyUpdates record={record} user={user} />
+          </TabsContent>
+
+          <TabsContent value="approvals">
+            <RecordApprovals record={record} user={user} />
           </TabsContent>
 
           <TabsContent value="documents">
