@@ -101,9 +101,9 @@ export const isReadOnly = () => connection.shared && connection.status === "offl
 export const OFFLINE_MESSAGE =
   "The RPAHUB shared database cannot currently be reached. If you are working remotely, connect to the company VPN and click Retry Connection.";
 
-/** Manual "Retry Connection" / "Sync" action. */
+/** Manual "Retry Connection" / "Sync" action — always re-probes the share. */
 export async function retryConnection() {
-  return syncNow();
+  return syncNow({ force: true });
 }
 
 /* ------------------------------------------------------------------ */
@@ -250,9 +250,16 @@ async function writeShared(desktop: Bridge): Promise<void> {
       }
       if (res?.conflict && res.doc) {
         // A colleague committed first: merge their document into ours and retry.
+        const before = state;
         state = mergeDocuments(res.doc as AppData, state);
         connection = { ...connection, rev: res.rev };
+        notifyIfOverwritten(before, res.doc as AppData);
         emit();
+        continue;
+      }
+      if (res?.busy) {
+        // Another workstation holds the short write lock — back off and retry.
+        await new Promise((r) => setTimeout(r, 250 + attempt * 250));
         continue;
       }
       setConnection({ status: "offline", error: res?.error ?? "The shared workspace is unavailable." });
