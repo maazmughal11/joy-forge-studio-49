@@ -20,6 +20,7 @@ import type {
   Settings,
   Stage,
   TaskRecord,
+  UnlinkedApproval,
   UserAccount,
   WeeklyUpdate,
 } from "@/domain/models";
@@ -81,6 +82,12 @@ export interface AutomationRepository {
 export interface WeeklyUpdateRepository {
   getWeeklyUpdates(automationId?: string): MaybePromise<(WeeklyUpdate & { automationId: string })[]>;
   createWeeklyUpdate(automationId: string, update: NewWeeklyUpdate, actor: string): MaybePromise<void>;
+  editWeeklyUpdate(
+    automationId: string,
+    updateId: string,
+    patch: Partial<WeeklyUpdate>,
+    actor: string,
+  ): MaybePromise<void>;
   /** Per-user read state, so one reader does not clear the flag for the team. */
   markRead(automationId: string, updateId: string, actor: string): MaybePromise<void>;
 }
@@ -89,6 +96,12 @@ export interface ApprovalRepository {
   getApprovals(automationId?: string): MaybePromise<(Approval & { automationId: string })[]>;
   createApproval(automationId: string, approval: Omit<Approval, "id">, actor: string): MaybePromise<void>;
   updateApproval(automationId: string, approvalId: string, patch: Partial<Approval>, actor: string): MaybePromise<void>;
+  deleteApproval(automationId: string, approvalId: string, actor: string): MaybePromise<void>;
+  /** Approvals tracked centrally without a linked automation. */
+  getUnlinkedApprovals(): MaybePromise<UnlinkedApproval[]>;
+  createUnlinkedApproval(approval: Omit<UnlinkedApproval, "id">, actor: string): MaybePromise<UnlinkedApproval>;
+  updateUnlinkedApproval(approvalId: string, patch: Partial<UnlinkedApproval>, actor: string): MaybePromise<void>;
+  deleteUnlinkedApproval(approvalId: string, actor: string): MaybePromise<void>;
 }
 
 export interface CommentRepository {

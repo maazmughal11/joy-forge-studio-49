@@ -81,12 +81,18 @@ export const actions = {
   // Weekly updates
   getWeeklyUpdates: r.weeklyUpdates.getWeeklyUpdates,
   addUpdate: r.weeklyUpdates.createWeeklyUpdate,
+  editUpdate: r.weeklyUpdates.editWeeklyUpdate,
   markUpdateRead: r.weeklyUpdates.markRead,
 
   // Approvals
   getApprovals: r.approvals.getApprovals,
   addApproval: r.approvals.createApproval,
   updateApproval: r.approvals.updateApproval,
+  deleteApproval: r.approvals.deleteApproval,
+  getUnlinkedApprovals: r.approvals.getUnlinkedApprovals,
+  addUnlinkedApproval: r.approvals.createUnlinkedApproval,
+  updateUnlinkedApproval: r.approvals.updateUnlinkedApproval,
+  deleteUnlinkedApproval: r.approvals.deleteUnlinkedApproval,
 
   // Comments & documents
   addComment: r.comments.addComment,
