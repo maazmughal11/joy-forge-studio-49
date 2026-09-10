@@ -8,7 +8,7 @@ import { StageProgress } from "@/components/StageProgress";
 import { StatusBadge } from "@/components/StatusBadge";
 import { FieldInput } from "@/components/FieldInput";
 import { useAppData, useAutomation, actions } from "@/data";
-import { SECTIONS, completeness, fieldsForStage, priorityFromScoring } from "@/lib/fields";
+import { SECTIONS, applyFormConfig, completeness, fieldsForStage, priorityFromScoring } from "@/lib/fields";
 import { approvalDaysWaiting, moveBlockers, nameOf } from "@/lib/derive";
 import { ApprovalDialog, type ApprovalDraft } from "@/components/ApprovalDialog";
 import { Button } from "@/components/ui/button";
@@ -77,7 +77,12 @@ function RecordPage() {
   }
 
   const comp = completeness(record);
-  const fields = fieldsForStage(record.stage);
+  // Administrators can relabel, reorder and hide fields without touching data.
+  const fields = applyFormConfig(
+    fieldsForStage(record.stage),
+    data.settings.formConfig,
+    record.stage === "idea" ? "idea" : "project",
+  );
   const blockers = moveBlockers(record);
 
   return (
