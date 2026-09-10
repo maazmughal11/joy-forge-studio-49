@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
-import { ArrowDown, ArrowUp, Eye, EyeOff, RotateCcw } from "lucide-react";
+import { ArrowDown, ArrowUp, Eye, EyeOff, Plus, RotateCcw, Trash2 } from "lucide-react";
 import { useAppData, actions } from "@/data";
 import { FIELDS, SECTIONS, fieldsForStage } from "@/lib/fields";
 import type { FormConfig, FormFieldConfig } from "@/domain/models";
