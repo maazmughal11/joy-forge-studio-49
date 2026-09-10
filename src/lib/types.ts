@@ -180,6 +180,24 @@ export type UserAccount = {
   modifiedDate: string;
 };
 
+/**
+ * Admin-configurable form layout. Only presentation is configurable —
+ * internal field ids and stored data are never renamed or lost.
+ */
+export type FormFieldConfig = {
+  id: string;
+  label?: string;
+  visible?: boolean;
+  required?: boolean;
+  section?: string;
+  order?: number;
+};
+
+export type FormConfig = {
+  /** Keyed by form: "idea" | "project" | "automation". */
+  [form: string]: { fields: FormFieldConfig[]; sectionOrder?: string[] };
+};
+
 export type Settings = {
   currentUser: string;
   users: string[];
@@ -188,12 +206,15 @@ export type Settings = {
   storageMode: StorageMode;
   lastWriteAt?: string;
   workspaceLock?: { user: string; acquiredAt: string } | null;
+  formConfig?: FormConfig;
 };
 
 export type AppData = {
   version: number;
   settings: Settings;
   automations: Automation[];
+  /** Approvals tracked centrally without a linked automation. */
+  standaloneApprovals: UnlinkedApproval[];
   tasks: TaskRecord[];
   tombstones: Tombstone[];
   adminLog: AdminLogEntry[];
