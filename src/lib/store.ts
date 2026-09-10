@@ -223,6 +223,26 @@ function writeLocal() {
   }
 }
 
+/**
+ * Tell the user when a colleague changed a record they were also editing.
+ * Their newer version is kept — nothing is silently overwritten.
+ */
+function notifyIfOverwritten(localDoc: AppData, remoteDoc: AppData) {
+  const localById = new Map(localDoc.automations.map((a) => [a.id, a]));
+  const clashed = (remoteDoc.automations ?? []).find((r) => {
+    const l = localById.get(r.id);
+    return l && (r.rev ?? 0) > (l.rev ?? 0);
+  });
+  if (!clashed) return;
+  void import("sonner").then(({ toast }) =>
+    toast.warning("Updated by another user", {
+      id: "record-conflict",
+      description:
+        "This record was updated by another user while you were editing it. Please review the latest version before saving.",
+    }),
+  );
+}
+
 async function writeShared(desktop: Bridge): Promise<void> {
   if (writing) {
     writeQueued = true;
