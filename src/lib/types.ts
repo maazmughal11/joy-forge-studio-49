@@ -191,6 +191,12 @@ export type FormFieldConfig = {
   required?: boolean;
   section?: string;
   order?: number;
+  /** Administrator-created field (not part of the standard form). */
+  custom?: boolean;
+  /** Input type for custom fields. */
+  type?: string;
+  /** Dropdown list key for custom select fields. */
+  optionKey?: string;
 };
 
 export type FormConfig = {
