@@ -971,6 +971,8 @@ export const actions = {
   },
   recordLogin(id: string) {
     const acct = state.accounts.find((a) => a.id === id);
+    // The built-in administrator signs in without recording a login or a trace.
+    if (isAnonymousActor(acct?.displayName)) return;
     setState({
       ...state,
       accounts: state.accounts.map((a) => (a.id === id ? { ...a, lastLogin: new Date().toISOString() } : a)),
