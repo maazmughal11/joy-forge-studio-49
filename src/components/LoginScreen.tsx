@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useState } from "react";
-import { Lock, LogIn, ShieldCheck, UserPlus } from "lucide-react";
+import { Lock, LogIn } from "lucide-react";
 import logoUrl from "@/assets/smurfit-westrock-logo-light2.png";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { actions, useAppData } from "@/data";
 import { authService } from "@/services/auth-service";
-import { isValidPin, suggestUsername, useSession } from "@/lib/auth";
+import { useSession } from "@/lib/auth";
 import type { UserAccount } from "@/domain/models";
 
 const initials = (name: string) =>
