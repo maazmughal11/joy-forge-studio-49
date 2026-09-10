@@ -50,7 +50,7 @@ export function UsersAdmin({ actor }: { actor: string }) {
             </tr>
           </thead>
           <tbody>
-            {data.accounts.filter((a) => !a.deleted).map((a) => (
+            {data.accounts.filter((a) => !a.deleted && !isBuiltinAdmin(a)).map((a) => (
               <tr key={a.id} className="border-t border-border/70">
                 <td className="px-3 py-2 font-medium">
                   {a.displayName}
@@ -94,7 +94,7 @@ export function UsersAdmin({ actor }: { actor: string }) {
                 </td>
               </tr>
             ))}
-            {data.accounts.filter((a) => !a.deleted).length === 0 ? (
+            {data.accounts.filter((a) => !a.deleted && !isBuiltinAdmin(a)).length === 0 ? (
               <tr><td colSpan={7} className="px-3 py-6 text-center text-muted-foreground">No accounts yet.</td></tr>
             ) : null}
           </tbody>

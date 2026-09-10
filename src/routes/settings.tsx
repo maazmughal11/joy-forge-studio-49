@@ -7,6 +7,7 @@ import { UsersAdmin } from "@/components/UsersAdmin";
 import { ImportCenter } from "@/components/ImportCenter";
 import { FormEditor } from "@/components/FormEditor";
 import { useAuth } from "@/hooks/useAuth";
+import { isBuiltinAdmin } from "@/lib/auth";
 import { useAppData, useConnection, actions, getStorageHealth } from "@/data";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -189,7 +190,7 @@ function SettingsPage() {
             </div>
             <div className="flex items-center justify-between text-xs text-muted-foreground">
               <span>{health.records.toLocaleString()} records</span>
-              <span>{data.accounts.filter((a) => !a.deleted).length} active user account(s)</span>
+              <span>{data.accounts.filter((a) => !a.deleted && !isBuiltinAdmin(a)).length} active user account(s)</span>
             </div>
             {health.error ? (
               <p className="rounded-md border border-destructive/40 bg-destructive/10 p-2 text-xs text-destructive">
@@ -257,7 +258,7 @@ function SettingsPage() {
           <p className="mt-4 text-lg font-medium">{user}</p>
           <p className="font-mono text-xs text-muted-foreground">{account?.username} · {account?.role}</p>
           <p className="mt-2 text-xs text-muted-foreground">
-            {data.automations.length} records stored · {data.accounts.filter((a) => !a.deleted).length} active user account(s)
+            {data.automations.length} records stored · {data.accounts.filter((a) => !a.deleted && !isBuiltinAdmin(a)).length} active user account(s)
           </p>
         </section>
 
