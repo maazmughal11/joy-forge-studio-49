@@ -33,6 +33,7 @@ import {
   num,
   onHold,
   pipelineTrend,
+  lifecycleCategories,
   stageLabel,
   str,
 } from "@/lib/derive";
@@ -182,6 +183,8 @@ function Reports() {
   ).sort((a, b) => b.value - a.value);
 
   const pipeTrend = pipelineTrend(records, 12);
+  // Chart series follow each record's own Lifecycle Category.
+  const pipeCategories = lifecycleCategories(records);
 
   // 8-week health trend across all projects
   const trend = Array.from({ length: 8 }, (_, idx) => {
