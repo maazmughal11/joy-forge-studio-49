@@ -109,7 +109,7 @@ export function FormEditor({ readOnly }: { readOnly?: boolean }) {
                 onChange={(e) => patch(r.id, { label: e.target.value })}
                 className="h-8 min-w-48 flex-1 bg-card"
               />
-              <Select value={r.section ?? ""} onValueChange={(v) => patch(r.id, { section: v })} disabled={readOnly}>
+              <Select value={r.section ?? ""} onValueChange={(v) => patch(r.id, { section: v })} disabled={!!readOnly}>
                 <SelectTrigger className="h-8 w-52 bg-card">
                   <SelectValue />
                 </SelectTrigger>
