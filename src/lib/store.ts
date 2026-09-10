@@ -203,7 +203,14 @@ export function mergeDocuments(remote: AppData, local: AppData): AppData {
 
 /** Assignment dropdowns always mirror the active (non-deleted) accounts. */
 function withUserOptions(doc: AppData): AppData {
-  const users = doc.accounts.filter((a) => a.active && !a.deleted).map((a) => a.displayName).sort();
+  // The built-in system administrator is never offered as a business person.
+  const users = [
+    ...new Set(
+      doc.accounts
+        .filter((a) => a.active && !a.deleted && a.username?.toLowerCase() !== "admin")
+        .map((a) => a.displayName),
+    ),
+  ].sort();
   return {
     ...doc,
     settings: { ...doc.settings, users, options: { ...doc.settings.options, users } },
