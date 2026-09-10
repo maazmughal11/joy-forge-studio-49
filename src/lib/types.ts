@@ -146,7 +146,7 @@ export type TaskRecord = {
 /** Deletion marker so a delete on one workstation is not resurrected by a peer. */
 export type Tombstone = {
   id: string;
-  entity: "automation" | "task";
+  entity: "automation" | "task" | "approval";
   deletedAt: string;
   deletedBy: string;
 };
