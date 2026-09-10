@@ -195,6 +195,46 @@ export function FormEditor({ readOnly }: { readOnly?: boolean }) {
           </li>
         ))}
       </ul>
+
+      <div className="mt-4 rounded-md border border-dashed border-border p-3">
+        <p className="text-xs font-medium">Add a new question</p>
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          <Input
+            value={newLabel}
+            disabled={readOnly}
+            placeholder="Question label…"
+            onChange={(e) => setNewLabel(e.target.value)}
+            className="h-8 min-w-48 flex-1 bg-card"
+          />
+          <Select value={newSection} onValueChange={setNewSection} disabled={!!readOnly}>
+            <SelectTrigger className="h-8 w-52 bg-card">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {sections.map((s) => (
+                <SelectItem key={s} value={s}>
+                  {s}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Select value={newType} onValueChange={setNewType} disabled={!!readOnly}>
+            <SelectTrigger className="h-8 w-36 bg-card">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {NEW_FIELD_TYPES.map((t) => (
+                <SelectItem key={t.key} value={t.key}>
+                  {t.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button size="sm" disabled={readOnly || !newLabel.trim()} onClick={addField}>
+            <Plus className="h-3.5 w-3.5" /> Add field
+          </Button>
+        </div>
+      </div>
     </section>
   );
 }
