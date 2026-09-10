@@ -28,19 +28,20 @@ export function FormEditor({ readOnly }: { readOnly?: boolean }) {
     const base = fieldsForStage(form);
     const saved = config?.[form]?.fields ?? [];
     const byId = new Map(saved.map((e) => [e.id, e]));
-    return base
-      .map((f, i) => {
-        const c = byId.get(f.key);
-        return {
-          id: f.key,
-          label: c?.label ?? f.label,
-          section: c?.section ?? f.section,
-          visible: c?.visible !== false,
-          required: c?.required ?? !f.optional,
-          order: c?.order ?? i,
-        };
-      })
-      .sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+    const standard = new Set(base.map((f) => f.key));
+    const fromBase = base.map((f, i) => {
+      const c = byId.get(f.key);
+      return {
+        id: f.key,
+        label: c?.label ?? f.label,
+        section: c?.section ?? f.section,
+        visible: c?.visible !== false,
+        required: c?.required ?? !f.optional,
+        order: c?.order ?? i,
+      } as FormFieldConfig;
+    });
+    const custom = saved.filter((e) => e.custom && !standard.has(e.id));
+    return [...fromBase, ...custom].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
   }, [form, config]);
 
   const save = (next: FormFieldConfig[]) => {
