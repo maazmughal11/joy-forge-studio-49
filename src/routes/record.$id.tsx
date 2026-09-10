@@ -297,17 +297,57 @@ function RecordPage() {
   );
 }
 
+/**
+ * Weekly updates inside a record use exactly the same fields and the same
+ * stored data as the Weekly Updates menu — an update logged here appears
+ * there immediately, and the other way round.
+ */
 function WeeklyUpdates({ record, user }: { record: Automation; user: string }) {
   const [text, setText] = useState("");
   const [percent, setPercent] = useState(50);
   const [rag, setRag] = useState<"Red" | "Amber" | "Green">("Green");
+  const [accomplishments, setAccomplishments] = useState("");
+  const [nextSteps, setNextSteps] = useState("");
+  const [blockers, setBlockers] = useState("");
+  const [decisions, setDecisions] = useState("");
+  const [editing, setEditing] = useState<string | null>(null);
+  const [editText, setEditText] = useState("");
+
+  const submit = () => {
+    if (!text.trim()) {
+      toast.error("Add a status comment first");
+      return;
+    }
+    actions.addUpdate(
+      record.id,
+      {
+        text: text.trim(),
+        percentComplete: percent,
+        rag,
+        accomplishments: accomplishments.trim(),
+        nextSteps: nextSteps.trim(),
+        blockers: blockers.trim(),
+        decisions: decisions.trim(),
+      },
+      user,
+    );
+    setText("");
+    setAccomplishments("");
+    setNextSteps("");
+    setBlockers("");
+    setDecisions("");
+    toast.success("Weekly update logged");
+  };
 
   return (
     <div className="space-y-4">
       <section className="card-surface p-4">
         <h2 className="text-sm font-semibold">Submit weekly update</h2>
-        <div className="mt-3 grid gap-3 md:grid-cols-[1fr_140px_140px_auto] md:items-end">
-          <div className="space-y-1.5">
+        <p className="mb-3 text-xs text-muted-foreground">
+          Weekly updates are optional and shared with the Weekly Updates menu.
+        </p>
+        <div className="grid gap-3 md:grid-cols-2">
+          <div className="space-y-1.5 md:col-span-2">
             <Label className="text-xs text-muted-foreground">Status comment</Label>
             <Textarea rows={2} value={text} onChange={(e) => setText(e.target.value)} className="bg-card" />
           </div>
@@ -330,17 +370,25 @@ function WeeklyUpdates({ record, user }: { record: Automation; user: string }) {
               </SelectContent>
             </Select>
           </div>
-          <Button
-            onClick={() => {
-              if (!text.trim()) {
-                toast.error("Add a status comment first");
-                return;
-              }
-              actions.addUpdate(record.id, { text: text.trim(), percentComplete: percent, rag }, user);
-              setText("");
-              toast.success("Weekly update logged");
-            }}
-          >
+          <div className="space-y-1.5">
+            <Label className="text-xs text-muted-foreground">Accomplishments this week</Label>
+            <Textarea rows={2} value={accomplishments} onChange={(e) => setAccomplishments(e.target.value)} className="bg-card" />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs text-muted-foreground">Next steps</Label>
+            <Textarea rows={2} value={nextSteps} onChange={(e) => setNextSteps(e.target.value)} className="bg-card" />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs text-muted-foreground">Blockers / risks</Label>
+            <Textarea rows={2} value={blockers} onChange={(e) => setBlockers(e.target.value)} className="bg-card" />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs text-muted-foreground">Decisions needed</Label>
+            <Textarea rows={2} value={decisions} onChange={(e) => setDecisions(e.target.value)} className="bg-card" />
+          </div>
+        </div>
+        <div className="mt-3 flex justify-end">
+          <Button onClick={submit}>
             <Plus className="h-4 w-4" /> Log update
           </Button>
         </div>
