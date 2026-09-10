@@ -191,7 +191,18 @@ export function applyFormConfig(
   const entries = config?.[form]?.fields ?? [];
   if (entries.length === 0) return fields;
   const byId = new Map(entries.map((e) => [e.id, e]));
-  return fields
+  const standard = new Set(fields.map((f) => f.key));
+  const customFields: FieldDef[] = entries
+    .filter((e) => e.custom && !standard.has(e.id) && e.visible !== false)
+    .map((e) => ({
+      key: e.id,
+      label: e.label ?? e.id,
+      type: (e.type as FieldType) ?? "text",
+      section: e.section ?? SECTIONS[0],
+      ...(e.optionKey ? { optionKey: e.optionKey } : {}),
+      ...(e.required ? {} : { optional: true }),
+    }));
+  return [...fields, ...customFields]
     .filter((f) => byId.get(f.key)?.visible !== false)
     .map((f) => {
       const cfg = byId.get(f.key);
