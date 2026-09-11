@@ -180,7 +180,7 @@ function RecordPage() {
           <div className="mt-4 flex items-start gap-2 rounded-md border border-warning/50 bg-warning/15 p-3 text-xs text-warning-foreground">
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
             <div>
-              <p className="font-medium">Before this idea can advance to Project Tracking:</p>
+              <p className="font-medium">Recommended before moving to Project Tracking:</p>
               <ul className="mt-1 list-inside list-disc">
                 {blockers.map((b) => (
                   <li key={b}>{b}</li>
