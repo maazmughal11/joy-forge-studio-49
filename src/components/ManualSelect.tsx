@@ -46,7 +46,7 @@ export function ManualSelect({
           <SelectValue placeholder={placeholder} />
         </SelectTrigger>
         <SelectContent>
-          {options.map((o) => (
+          {list.map((o) => (
             <SelectItem key={o} value={o}>
               {o}
             </SelectItem>
