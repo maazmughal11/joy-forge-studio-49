@@ -23,7 +23,9 @@ export function ManualSelect({
   placeholder?: string;
   id?: string;
 }) {
-  const known = value === "" || options.includes(value);
+  /* A standalone "Other" is redundant next to the manual-entry choice below. */
+  const list = options.filter((o) => o.trim().toLowerCase() !== "other");
+  const known = value === "" || list.includes(value);
   const [manual, setManual] = useState(!known);
 
   return (
