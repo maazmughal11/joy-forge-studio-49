@@ -80,7 +80,7 @@ function WeeklyUpdates() {
   };
 
   const tracked = useMemo(
-    () => data.automations.filter((a) => (a.stage === "project" || a.stage === "production") && !cancelled(a)),
+    () => data.automations.filter((a) => (a.stage === "idea" || a.stage === "project" || a.stage === "production") && !cancelled(a)),
     [data.automations],
   );
 
@@ -410,7 +410,7 @@ function UpdateForm({
                   <AutomationPicker
                     value={recordId}
                     onChange={setRecordId}
-                    filter={(a) => a.stage === "project" || a.stage === "production"}
+                    filter={(a) => a.stage === "idea" || a.stage === "project" || a.stage === "production"}
                   />
                 </div>
               </div>

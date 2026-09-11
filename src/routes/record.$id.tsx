@@ -62,6 +62,7 @@ function RecordPage() {
   const { user, can, account } = useAuth();
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [assignOpen, setAssignOpen] = useState(false);
+  const [moveOpen, setMoveOpen] = useState(false);
 
   if (!record) {
     return (
@@ -92,17 +93,7 @@ function RecordPage() {
       actions={
         <>
           {record.stage === "idea" ? (
-            <Button
-              onClick={() => {
-                if (blockers.length) {
-                  toast.error(`Cannot move yet: ${blockers.join(", ")}`);
-                  return;
-                }
-                actions.moveToProject(record.id, user);
-                toast.success("Moved to Project Tracking");
-                navigate({ to: "/projects" });
-              }}
-            >
+            <Button onClick={() => setMoveOpen(true)}>
               Move to Project Tracking <ArrowRight className="h-4 w-4" />
             </Button>
           ) : null}
@@ -116,6 +107,42 @@ function RecordPage() {
       }
     >
       <AssignTaskDialog open={assignOpen} onOpenChange={setAssignOpen} assignedBy={user} defaultRecordId={record.id} />
+
+      <Dialog open={moveOpen} onOpenChange={setMoveOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Move to Project Tracking?</DialogTitle>
+          </DialogHeader>
+          {blockers.length ? (
+            <div className="space-y-2 text-sm text-muted-foreground">
+              <p>The following recommended requirements are currently incomplete:</p>
+              <ul className="list-inside list-disc">
+                {blockers.map((b) => (
+                  <li key={b}>{b}</li>
+                ))}
+              </ul>
+              <p>You may still move this idea to Project Tracking if you want to continue.</p>
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              <b>{nameOf(record)}</b> will move from Idea Tracking to Project Tracking.
+            </p>
+          )}
+          <div className="flex justify-end gap-2">
+            <Button variant="secondary" onClick={() => setMoveOpen(false)}>Cancel</Button>
+            <Button
+              onClick={() => {
+                actions.moveToProject(record.id, user);
+                setMoveOpen(false);
+                toast.success("Moved to Project Tracking");
+                navigate({ to: "/projects" });
+              }}
+            >
+              {blockers.length ? "Confirm Move Anyway" : "Confirm"} <ArrowRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
         <DialogContent className="max-w-md">
@@ -153,7 +180,7 @@ function RecordPage() {
           <div className="mt-4 flex items-start gap-2 rounded-md border border-warning/50 bg-warning/15 p-3 text-xs text-warning-foreground">
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
             <div>
-              <p className="font-medium">Before this idea can advance to Project Tracking:</p>
+              <p className="font-medium">Recommended before moving to Project Tracking:</p>
               <ul className="mt-1 list-inside list-disc">
                 {blockers.map((b) => (
                   <li key={b}>{b}</li>
