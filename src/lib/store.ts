@@ -960,14 +960,48 @@ export const actions = {
     return account;
   },
   updateAccount(id: string, patch: Partial<UserAccount>, actor: string, auditAction?: string, detail?: string) {
-    const accounts = state.accounts.map((a) =>
-      a.id === id ? { ...a, ...patch, modifiedDate: new Date().toISOString() } : a,
-    );
-    setState({
+    const now = new Date().toISOString();
+    const prev = state.accounts.find((a) => a.id === id);
+    const oldName = prev?.displayName;
+    const newName = patch.displayName;
+    const accounts = state.accounts.map((a) => (a.id === id ? { ...a, ...patch, modifiedDate: now } : a));
+    let next: AppData = {
       ...state,
       accounts,
       adminLog: auditAction ? [adminEntry(actor, auditAction, detail), ...state.adminLog] : state.adminLog,
-    });
+    };
+    // A renamed person keeps every assignment: references follow the new name.
+    if (oldName && newName && oldName !== newName) {
+      const swap = (v: string | undefined) => (v === oldName ? newName : v);
+      next = {
+        ...next,
+        automations: next.automations.map((a) => {
+          const hits = Object.entries(a.data).filter(([, v]) => v === oldName);
+          const approvalsHit = a.approvals.some((p) => p.approver === oldName || p.requestedBy === oldName);
+          if (!hits.length && !approvalsHit) return a;
+          const data = { ...a.data };
+          hits.forEach(([k]) => (data[k] = newName));
+          return {
+            ...a,
+            data,
+            approvals: a.approvals.map((p) => ({ ...p, approver: swap(p.approver)!, requestedBy: swap(p.requestedBy)! })),
+            rev: (a.rev ?? 1) + 1,
+            modifiedDate: now,
+          };
+        }),
+        tasks: next.tasks.map((t) =>
+          t.assignedTo === oldName || t.assignedBy === oldName
+            ? { ...t, assignedTo: swap(t.assignedTo)!, assignedBy: swap(t.assignedBy)!, modifiedDate: now }
+            : t,
+        ),
+        standaloneApprovals: next.standaloneApprovals.map((p) =>
+          p.approver === oldName || p.requestedBy === oldName
+            ? { ...p, approver: swap(p.approver)!, requestedBy: swap(p.requestedBy)!, modifiedDate: now }
+            : p,
+        ),
+      };
+    }
+    setState(withUserOptions(next));
   },
   /**
    * Soft-deletes an account. Portfolio records, approvals, updates, tasks,
