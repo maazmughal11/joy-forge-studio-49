@@ -203,9 +203,9 @@ export function mergeDocuments(remote: AppData, local: AppData): AppData {
         ...r.settings,
         ...l.settings,
         options: { ...win.options },
-        formConfig: win.formConfig,
-        settingsModifiedAt: win.settingsModifiedAt,
-      };
+        ...(win.formConfig ? { formConfig: win.formConfig } : {}),
+        ...(win.settingsModifiedAt ? { settingsModifiedAt: win.settingsModifiedAt } : {}),
+      } as AppData["settings"];
     })(),
   });
 }

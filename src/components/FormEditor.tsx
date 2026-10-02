@@ -37,12 +37,7 @@ export function FormEditor({ readOnly }: { readOnly?: boolean }) {
   const [newSection, setNewSection] = useState<string>(SECTIONS[0]);
   const config = data.settings.formConfig;
 
-  const sections = useMemo(
-    () => formSections(config, form, fieldsForStage(form).map((f) => ({ ...f }))).filter(
-      (x) => config?.[form]?.sectionOrder?.length ? config[form]!.sectionOrder!.includes(x) || (config[form]!.fields ?? []).some((e) => e.section === x && e.visible !== false) : true,
-    ),
-    [config, form],
-  );
+  const sections = useMemo(() => formSections(config, form), [config, form]);
   const rows = useMemo<FormFieldConfig[]>(() => {
     const base = fieldsForStage(form);
     const saved = config?.[form]?.fields ?? [];
