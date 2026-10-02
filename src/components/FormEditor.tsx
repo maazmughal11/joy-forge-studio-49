@@ -1,8 +1,8 @@
 import { useMemo, useState } from "react";
 import { toast } from "sonner";
-import { ArrowDown, ArrowUp, Eye, EyeOff, Plus, RotateCcw, Trash2 } from "lucide-react";
+import { ArrowDown, ArrowUp, Eye, EyeOff, Pencil, Plus, RotateCcw, Trash2 } from "lucide-react";
 import { useAppData, actions } from "@/data";
-import { FIELDS, SECTIONS, fieldsForStage } from "@/lib/fields";
+import { SECTIONS, fieldsForStage, formSections } from "@/lib/fields";
 import type { FormConfig, FormFieldConfig } from "@/domain/models";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,6 +20,7 @@ const NEW_FIELD_TYPES = [
   { key: "number", label: "Number" },
   { key: "date", label: "Date" },
   { key: "yesno", label: "Yes / No" },
+  { key: "select", label: "Dropdown" },
   { key: "url", label: "Link" },
 ] as const;
 
@@ -36,6 +37,12 @@ export function FormEditor({ readOnly }: { readOnly?: boolean }) {
   const [newSection, setNewSection] = useState<string>(SECTIONS[0]);
   const config = data.settings.formConfig;
 
+  const sections = useMemo(
+    () => formSections(config, form, fieldsForStage(form).map((f) => ({ ...f }))).filter(
+      (x) => config?.[form]?.sectionOrder?.length ? config[form]!.sectionOrder!.includes(x) || (config[form]!.fields ?? []).some((e) => e.section === x && e.visible !== false) : true,
+    ),
+    [config, form],
+  );
   const rows = useMemo<FormFieldConfig[]>(() => {
     const base = fieldsForStage(form);
     const saved = config?.[form]?.fields ?? [];
@@ -50,6 +57,8 @@ export function FormEditor({ readOnly }: { readOnly?: boolean }) {
         visible: c?.visible !== false,
         required: c?.required ?? !f.optional,
         order: c?.order ?? i,
+        type: f.type,
+        optionKey: c?.optionKey ?? f.optionKey,
       } as FormFieldConfig;
     });
     const custom = saved.filter((e) => e.custom && !standard.has(e.id));
@@ -58,8 +67,51 @@ export function FormEditor({ readOnly }: { readOnly?: boolean }) {
 
   const save = (next: FormFieldConfig[]) => {
     const withOrder = next.map((r, i) => ({ ...r, order: i }));
-    const nextConfig: FormConfig = { ...(config ?? {}), [form]: { fields: withOrder } };
+    const nextConfig: FormConfig = { ...(config ?? {}), [form]: { fields: withOrder, sectionOrder: sections } };
     actions.setSettings({ formConfig: nextConfig });
+  };
+
+  const saveAll = (nextRows: FormFieldConfig[], nextSections: string[]) => {
+    const withOrder = nextRows.map((r, i) => ({ ...r, order: i }));
+    actions.setSettings({ formConfig: { ...(config ?? {}), [form]: { fields: withOrder, sectionOrder: nextSections } } });
+  };
+
+  const [newSectionName, setNewSectionName] = useState("");
+  const addSection = () => {
+    const name = newSectionName.trim();
+    if (!name || sections.includes(name)) return;
+    saveAll(rows, [...sections, name]);
+    setNewSectionName("");
+    toast.success(`Section "${name}" added`);
+  };
+  const renameSection = (oldName: string) => {
+    const name = window.prompt("Rename section", oldName)?.trim();
+    if (!name || name === oldName) return;
+    if (sections.includes(name)) return void toast.error("A section with that name already exists");
+    saveAll(
+      rows.map((r) => (r.section === oldName ? { ...r, section: name } : r)),
+      sections.map((x) => (x === oldName ? name : x)),
+    );
+  };
+  const moveSection = (i: number, dir: -1 | 1) => {
+    const t = i + dir;
+    if (t < 0 || t >= sections.length) return;
+    const next = [...sections];
+    [next[i], next[t]] = [next[t]!, next[i]!];
+    saveAll(rows, next);
+  };
+  const removeSection = (name: string) => {
+    if (!window.confirm(`Remove section "${name}"? Its questions are hidden; existing information is kept.`)) return;
+    saveAll(
+      rows.filter((r) => !(r.custom && r.section === name)).map((r) => (r.section === name ? { ...r, visible: false } : r)),
+      sections.filter((x) => x !== name),
+    );
+  };
+  const setDropdown = (r: FormFieldConfig, text: string) => {
+    const key = r.optionKey ?? `custom_${r.id}`;
+    const values = Array.from(new Set(text.split(/\n|,/).map((v) => v.trim()).filter(Boolean)));
+    actions.setOptionList(key, values);
+    if (!r.optionKey) patch(r.id, { optionKey: key });
   };
 
   const patch = (id: string, change: Partial<FormFieldConfig>) =>
@@ -99,6 +151,7 @@ export function FormEditor({ readOnly }: { readOnly?: boolean }) {
       label,
       section: newSection,
       type: newType,
+      ...(newType === "select" ? { optionKey: `custom_${id}` } : {}),
       visible: true,
       required: false,
       custom: true,
@@ -118,7 +171,6 @@ export function FormEditor({ readOnly }: { readOnly?: boolean }) {
     toast.success("Form restored to its standard layout");
   };
 
-  const sections = Array.from(new Set([...SECTIONS, ...FIELDS.map((f) => f.section)]));
 
   return (
     <section className="card-surface p-4">
@@ -145,6 +197,25 @@ export function FormEditor({ readOnly }: { readOnly?: boolean }) {
           <Button variant="outline" size="sm" onClick={reset} disabled={readOnly}>
             <RotateCcw className="h-3.5 w-3.5" /> Reset
           </Button>
+        </div>
+      </div>
+
+      <div className="mt-4 rounded-md border border-border p-3">
+        <p className="text-xs font-medium">Sections</p>
+        <ul className="mt-2 space-y-1">
+          {sections.map((sec, i) => (
+            <li key={sec} className="flex items-center gap-1 text-sm">
+              <span className="flex-1">{sec}</span>
+              <Button variant="ghost" size="sm" disabled={readOnly} onClick={() => renameSection(sec)}><Pencil className="h-3.5 w-3.5" /></Button>
+              <Button variant="ghost" size="sm" disabled={readOnly} onClick={() => moveSection(i, -1)}><ArrowUp className="h-3.5 w-3.5" /></Button>
+              <Button variant="ghost" size="sm" disabled={readOnly} onClick={() => moveSection(i, 1)}><ArrowDown className="h-3.5 w-3.5" /></Button>
+              <Button variant="ghost" size="sm" className="text-destructive" disabled={readOnly} onClick={() => removeSection(sec)}><Trash2 className="h-3.5 w-3.5" /></Button>
+            </li>
+          ))}
+        </ul>
+        <div className="mt-2 flex gap-2">
+          <Input value={newSectionName} disabled={readOnly} placeholder="New section name…" onChange={(e) => setNewSectionName(e.target.value)} className="h-8 bg-card" />
+          <Button size="sm" disabled={readOnly || !newSectionName.trim()} onClick={addSection}><Plus className="h-3.5 w-3.5" /> Add section</Button>
         </div>
       </div>
 
@@ -199,8 +270,28 @@ export function FormEditor({ readOnly }: { readOnly?: boolean }) {
                 />
                 Required for completeness
               </Label>
+              {r.custom ? (
+                <Select value={r.type ?? "text"} onValueChange={(v) => patch(r.id, { type: v, ...(v === "select" && !r.optionKey ? { optionKey: `custom_${r.id}` } : {}) })} disabled={!!readOnly}>
+                  <SelectTrigger className="h-7 w-32 bg-card text-xs"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    {NEW_FIELD_TYPES.map((t) => <SelectItem key={t.key} value={t.key}>{t.label}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              ) : null}
               <span className="font-mono text-[11px] text-muted-foreground">{r.id}</span>
             </div>
+            {r.type === "select" && r.optionKey !== "users" ? (
+              <div className="mt-2 pl-1">
+                <Label className="text-[11px] text-muted-foreground">Dropdown choices (comma separated)</Label>
+                <Input
+                  key={`${r.id}-${(data.settings.options[r.optionKey ?? `custom_${r.id}`] ?? []).join("|")}`}
+                  defaultValue={(data.settings.options[r.optionKey ?? `custom_${r.id}`] ?? []).join(", ")}
+                  disabled={readOnly}
+                  onBlur={(e) => setDropdown(r, e.target.value)}
+                  className="mt-1 h-8 bg-card"
+                />
+              </div>
+            ) : null}
           </li>
         ))}
       </ul>
