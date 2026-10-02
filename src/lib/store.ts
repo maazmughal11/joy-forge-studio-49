@@ -193,11 +193,20 @@ export function mergeDocuments(remote: AppData, local: AppData): AppData {
     adminLog,
     standaloneApprovals,
     tombstones,
-    settings: {
-      ...r.settings,
-      ...l.settings,
-      options: { ...r.settings.options, ...l.settings.options },
-    },
+    // Shared settings (dropdown lists, form layout) are one unit: the most
+    // recently saved copy wins, so a fresh workstation never overwrites the
+    // shared lists with its built-in defaults.
+    settings: (() => {
+      const localWins = !!l.settings.settingsModifiedAt && newer(l.settings.settingsModifiedAt, r.settings.settingsModifiedAt ?? "1970-01-01");
+      const win = localWins ? l.settings : r.settings;
+      return {
+        ...r.settings,
+        ...l.settings,
+        options: { ...win.options },
+        formConfig: win.formConfig,
+        settingsModifiedAt: win.settingsModifiedAt,
+      };
+    })(),
   });
 }
 
@@ -539,10 +548,17 @@ export const actions = {
     setState({ ...state, settings: { ...state.settings, currentUser: name } });
   },
   setSettings(patch: Partial<AppData["settings"]>) {
-    setState({ ...state, settings: { ...state.settings, ...patch } });
+    setState({ ...state, settings: { ...state.settings, ...patch, settingsModifiedAt: new Date().toISOString() } });
   },
   setOptionList(key: string, values: string[]) {
-    setState({ ...state, settings: { ...state.settings, options: { ...state.settings.options, [key]: values } } });
+    setState({
+      ...state,
+      settings: {
+        ...state.settings,
+        options: { ...state.settings.options, [key]: values },
+        settingsModifiedAt: new Date().toISOString(),
+      },
+    });
   },
   createRecord(stage: Stage, user: string): Automation {
     const now = new Date().toISOString();

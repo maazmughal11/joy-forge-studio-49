@@ -213,6 +213,8 @@ export type Settings = {
   lastWriteAt?: string;
   workspaceLock?: { user: string; acquiredAt: string } | null;
   formConfig?: FormConfig;
+  /** When shared settings (dropdowns, form layout) were last saved. */
+  settingsModifiedAt?: string;
 };
 
 export type AppData = {
