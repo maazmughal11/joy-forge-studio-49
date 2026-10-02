@@ -211,8 +211,17 @@ export function applyFormConfig(
         ...f,
         ...(cfg.label ? { label: cfg.label } : {}),
         ...(cfg.section ? { section: cfg.section } : {}),
-        ...(cfg.required ? { optional: false } : {}),
+        ...(cfg.type && cfg.custom ? { type: cfg.type as FieldType } : {}),
+        ...(cfg.optionKey ? { optionKey: cfg.optionKey } : {}),
+        ...(cfg.required === undefined ? {} : { optional: !cfg.required }),
       };
     })
     .sort((a, b) => (byId.get(a.key)?.order ?? 0) - (byId.get(b.key)?.order ?? 0));
+}
+
+/** Ordered section list for a form, honouring the administrator's layout. */
+export function formSections(config: FormConfig | undefined, form: string, fields: FieldDef[] = []): string[] {
+  const saved = config?.[form]?.sectionOrder;
+  const base = saved && saved.length ? saved : [...SECTIONS];
+  return Array.from(new Set([...base, ...fields.map((f) => f.section)]));
 }

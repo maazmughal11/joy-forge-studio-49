@@ -206,9 +206,13 @@ function EditUserDialog({ account, onClose, actor }: { account: UserAccount | nu
   const [role, setRole] = useState<Role>(account?.role ?? "Editor");
   const [perms, setPerms] = useState<string[]>(account?.permissions ?? []);
   const [loadedId, setLoadedId] = useState<string | null>(null);
+  const [first, setFirst] = useState(account?.firstName ?? "");
+  const [last, setLast] = useState(account?.lastName ?? "");
 
   if (account && loadedId !== account.id) {
     setLoadedId(account.id);
+    setFirst(account.firstName ?? "");
+    setLast(account.lastName ?? "");
     setRole(account.role);
     setPerms(account.permissions);
   }
@@ -222,6 +226,16 @@ function EditUserDialog({ account, onClose, actor }: { account: UserAccount | nu
         {account ? (
           <>
             <DialogHeader><DialogTitle>{account.displayName} — role &amp; permissions</DialogTitle></DialogHeader>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div>
+                <Label htmlFor="edit-first">First name</Label>
+                <Input id="edit-first" className="mt-1" value={first} onChange={(e) => setFirst(e.target.value)} />
+              </div>
+              <div>
+                <Label htmlFor="edit-last">Last name</Label>
+                <Input id="edit-last" className="mt-1" value={last} onChange={(e) => setLast(e.target.value)} />
+              </div>
+            </div>
             <div className="flex flex-wrap items-end gap-3">
               <div className="w-52">
                 <Label>Role</Label>
@@ -264,15 +278,24 @@ function EditUserDialog({ account, onClose, actor }: { account: UserAccount | nu
 
             <div className="flex gap-2">
               <Button
+                disabled={!first.trim() || !last.trim()}
                 onClick={() => {
+                  const firstName = first.trim();
+                  const lastName = last.trim();
                   void authService.updateAccount(
                     account.id,
-                    { role, permissions: role === "Administrator" ? [...ALL_PERMISSIONS] : perms },
+                    {
+                      firstName,
+                      lastName,
+                      displayName: `${firstName} ${lastName}`,
+                      role,
+                      permissions: role === "Administrator" ? [...ALL_PERMISSIONS] : perms,
+                    },
                     actor,
                     "Permissions updated",
                     `${account.username} · ${role}`,
                   );
-                  toast.success("Permissions saved");
+                  toast.success("User saved");
                   onClose();
                 }}
               >

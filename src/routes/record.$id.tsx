@@ -8,7 +8,7 @@ import { StageProgress } from "@/components/StageProgress";
 import { StatusBadge } from "@/components/StatusBadge";
 import { FieldInput } from "@/components/FieldInput";
 import { useAppData, useAutomation, actions } from "@/data";
-import { SECTIONS, applyFormConfig, completeness, fieldsForStage, priorityFromScoring } from "@/lib/fields";
+import { formSections, applyFormConfig, completeness, fieldsForStage, priorityFromScoring } from "@/lib/fields";
 import { approvalDaysWaiting, moveBlockers, nameOf } from "@/lib/derive";
 import { ApprovalDialog, type ApprovalDraft } from "@/components/ApprovalDialog";
 import { Button } from "@/components/ui/button";
@@ -203,7 +203,7 @@ function RecordPage() {
           </TabsList>
 
           <TabsContent value="details" className="space-y-4">
-            {SECTIONS.map((section) => {
+            {formSections(data.settings.formConfig, record.stage === "idea" ? "idea" : "project", fields).map((section) => {
               const sectionFields = fields.filter((f) => f.section === section);
               if (!sectionFields.length) return null;
               return (
